@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment variables (keep your API keys secret!)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Cache
+.cache/
+
+# Backups (local only)
+backup_*/
+
+# Test folders
+Test1/
+Test2/
+
+# Agent workflows
+.agent/
+
+# GitHub ready (already separate)
+github-ready/
