@@ -6,7 +6,7 @@
 //   pm/viewer → cannot change passwords
 // ═══════════════════════════════════════════════════════════════
 
-export async function onRequestPut(context) {
+export async function onRequestPost(context) {
     const { request, env, data } = context;
     const callerRole = data.user.role;
 

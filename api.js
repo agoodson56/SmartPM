@@ -57,7 +57,7 @@ const API = {
   },
 
   changePassword(target_username, new_password) {
-    return this.request('PUT', '/auth/change-password', { target_username, new_password });
+    return this.request('POST', '/auth/change-password', { target_username, new_password });
   },
 
   // Projects
