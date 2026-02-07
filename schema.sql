@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════
--- 3D PROJECT MANAGER — D1 DATABASE SCHEMA
+-- SMARTPM — D1 DATABASE SCHEMA
 -- ═══════════════════════════════════════════════════════
 
 -- AUTHENTICATION

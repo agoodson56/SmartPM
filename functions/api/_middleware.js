@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// 3D PROJECT MANAGER — AUTH MIDDLEWARE
+// SMARTPM — AUTH MIDDLEWARE
 // Validates session tokens for all /api/* routes (except login)
 // ═══════════════════════════════════════════════════════════════
 

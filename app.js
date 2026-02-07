@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
-// 3D PROJECT MANAGER — MAIN APPLICATION
+// SMARTPM — MAIN APPLICATION
 // SPA with hash-based routing, module rendering, state management
+// Powered by SmartPlans — imports estimates for full project lifecycle
 // ═══════════════════════════════════════════════════════════════
 
 const App = {
@@ -51,7 +52,7 @@ const App = {
     let c = document.getElementById('toast-container');
     if (!c) { c = document.createElement('div'); c.id = 'toast-container'; c.className = 'toast-container'; document.body.appendChild(c); }
     c.innerHTML = this.state.toasts.map(t =>
-      `<div class="toast toast--${t.type}">${t.type==='success'?'✓':t.type==='error'?'✕':'ⓘ'} ${esc(t.message)}</div>`
+      `<div class="toast toast--${t.type}">${t.type === 'success' ? '✓' : t.type === 'error' ? '✕' : 'ⓘ'} ${esc(t.message)}</div>`
     ).join('');
   },
 
@@ -75,7 +76,7 @@ const App = {
         <div class="login-card">
           <div class="login-logo">
             <div class="login-logo-icon">🏗️</div>
-            <h1>3D Project Manager</h1>
+            <h1>SmartPM</h1>
             <p>ELV Construction Management</p>
           </div>
           <div class="login-error" id="login-error"></div>
@@ -118,7 +119,7 @@ const App = {
       <div class="app-shell">
         <header class="app-header">
           <div class="app-header-brand" onclick="App.navigate('dashboard')">
-            <span>🏗️ 3D Project Manager</span>
+            <span>🏗️ SmartPM</span>
           </div>
           <nav class="app-header-nav">
             <button class="header-nav-btn ${this.state.route === 'dashboard' ? 'active' : ''}" onclick="App.navigate('dashboard')">Dashboard</button>
@@ -135,7 +136,7 @@ const App = {
       </div>`;
   },
 
-  bindShell() {},
+  bindShell() { },
 
   renderDashboard() {
     return `
@@ -331,8 +332,8 @@ const App = {
   renderProjectSettings(c) { c.innerHTML = this.moduleStub('Project Settings', '⚙️', 'Edit project details and configuration.'); },
 
   showNewProjectModal() {
-    const statuses = ['bidding','awarded','active','on_hold','punch_list','closeout','complete'];
-    const types = ['new_construction','renovation','tenant_improvement','design_build','service'];
+    const statuses = ['bidding', 'awarded', 'active', 'on_hold', 'punch_list', 'closeout', 'complete'];
+    const types = ['new_construction', 'renovation', 'tenant_improvement', 'design_build', 'service'];
     this.showModal('New Project', `
       <div class="form-grid">
         <div class="form-group form-full"><label class="form-label">Project Name *</label><input class="form-input" id="np-name" placeholder="e.g. ABC Office Tower ELV"></div>

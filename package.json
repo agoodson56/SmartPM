@@ -1,10 +1,10 @@
 {
-  "name": "3d-project-manager",
+  "name": "smartpm",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "npx wrangler pages dev . --d1 DB=3d-pm-db --port 3000",
+    "dev": "npx wrangler pages dev . --d1 DB=smartpm-db --port 3000",
     "deploy": "npx wrangler pages deploy .",
-    "db:init": "npx wrangler d1 execute 3d-pm-db --file=schema.sql"
+    "db:init": "npx wrangler d1 execute smartpm-db --file=schema.sql"
   }
 }

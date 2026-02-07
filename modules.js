@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// 3D PROJECT MANAGER — MODULE IMPLEMENTATIONS
+// SMARTPM — MODULE IMPLEMENTATIONS
 // Full UI for all project management modules
 // ═══════════════════════════════════════════════════════════════
 
