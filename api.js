@@ -56,6 +56,10 @@ const API = {
     return !!this.token && !!this.user;
   },
 
+  changePassword(target_username, new_password) {
+    return this.request('PUT', '/auth/change-password', { target_username, new_password });
+  },
+
   // Projects
   getProjects(filters) {
     const params = filters ? '?' + new URLSearchParams(filters).toString() : '';

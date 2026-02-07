@@ -309,7 +309,7 @@ CREATE INDEX IF NOT EXISTS idx_documents_project ON documents(project_id);
 CREATE INDEX IF NOT EXISTS idx_activity_project ON activity_log(project_id);
 
 -- SEED: Default users with role-based access
--- Admin (password: SmartAdmin2026!) — Full access: all modules, create/edit/delete everything
+-- Admin (password: SmartAdmin2026!) — Full access: edit all, manage passwords, delete completed projects
 INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, role) VALUES (
   '00000000000000000000000000000001',
   'admin',
@@ -319,7 +319,7 @@ INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, r
   'admin'
 );
 
--- Ops Manager (password: SmartOps2026!) — Operational access: edit projects, logs, schedules; no user/financial mgmt
+-- Ops Manager (password: SmartOps2026!) — Edit all project data, change PM password
 INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, role) VALUES (
   '00000000000000000000000000000002',
   'opsmgr',
@@ -329,7 +329,7 @@ INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, r
   'ops_mgr'
 );
 
--- Project Manager (password: SmartPM2026!) — PM access: view-heavy, edit own projects/logs only
+-- Project Manager (password: SmartPM2026!) — Edit material used & labor used only
 INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, role) VALUES (
   '00000000000000000000000000000003',
   'pm',
@@ -337,4 +337,14 @@ INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, r
   'Project Manager',
   'pm@3dtsi.com',
   'pm'
+);
+
+-- 3D (password: Smart3D2026!) — View-only: can only view project stats
+INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, role) VALUES (
+  '00000000000000000000000000000004',
+  '3d',
+  '83fab3f305bd12a5e70cc4d124c37f510640048286a6edec1f3f7b88ea35422d',
+  '3D Viewer',
+  'view@3dtsi.com',
+  'viewer'
 );

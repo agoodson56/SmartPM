@@ -911,6 +911,11 @@ body {
   color: var(--accent-sky);
 }
 
+.role-badge--viewer {
+  background: var(--accent-violet-dim);
+  color: var(--accent-violet);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    FORMS
    ═══════════════════════════════════════════════════════════════ */

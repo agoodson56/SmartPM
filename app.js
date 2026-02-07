@@ -17,20 +17,32 @@ const App = {
   },
 
   // ── Role-Based Permissions ────────────────────────────────
+  // Admin:   full access, change all passwords, delete completed projects
+  // Ops Mgr: edit all project data, change PM password
+  // PM:      edit material used & labor used only
+  // Viewer:  view-only (3D role)
   Permissions: {
     roles: {
-      admin: { label: 'Admin', canCreateProject: true, canEditProject: true, canDeleteProject: true, canManageFinancials: true, canManageUsers: true, canEditLogs: true, canEditRFIs: true, canEditCOs: true, canEditSubmittals: true, canEditPunch: true, canEditContacts: true, canImport: true },
-      ops_mgr: { label: 'Ops Mgr', canCreateProject: true, canEditProject: true, canDeleteProject: false, canManageFinancials: false, canManageUsers: false, canEditLogs: true, canEditRFIs: true, canEditCOs: false, canEditSubmittals: true, canEditPunch: true, canEditContacts: true, canImport: true },
-      pm: { label: 'PM', canCreateProject: false, canEditProject: false, canDeleteProject: false, canManageFinancials: false, canManageUsers: false, canEditLogs: true, canEditRFIs: false, canEditCOs: false, canEditSubmittals: false, canEditPunch: false, canEditContacts: true, canImport: false },
+      admin: { label: 'Admin', canCreateProject: true, canEditProject: true, canDeleteProject: true, canEditAllData: true, canEditMaterialLabor: true, canManagePasswords: true, canImport: true },
+      ops_mgr: { label: 'Ops Mgr', canCreateProject: true, canEditProject: true, canDeleteProject: false, canEditAllData: true, canEditMaterialLabor: true, canManagePasswords: true, canImport: true },
+      pm: { label: 'PM', canCreateProject: false, canEditProject: false, canDeleteProject: false, canEditAllData: false, canEditMaterialLabor: true, canManagePasswords: false, canImport: false },
+      viewer: { label: '3D', canCreateProject: false, canEditProject: false, canDeleteProject: false, canEditAllData: false, canEditMaterialLabor: false, canManagePasswords: false, canImport: false },
     },
     can(action) {
-      const role = (API.user && API.user.role) || 'pm';
-      const perms = this.roles[role] || this.roles.pm;
+      const role = (API.user && API.user.role) || 'viewer';
+      const perms = this.roles[role] || this.roles.viewer;
       return !!perms[action];
     },
     roleLabel() {
-      const role = (API.user && API.user.role) || 'pm';
-      return (this.roles[role] || this.roles.pm).label;
+      const role = (API.user && API.user.role) || 'viewer';
+      return (this.roles[role] || this.roles.viewer).label;
+    },
+    // Returns list of usernames this role can change passwords for
+    canChangePasswordOf() {
+      const role = (API.user && API.user.role) || 'viewer';
+      if (role === 'admin') return ['admin', 'opsmgr', 'pm', '3d'];
+      if (role === 'ops_mgr') return ['pm'];
+      return [];
     },
   },
 
@@ -141,13 +153,14 @@ const App = {
           </div>
           <nav class="app-header-nav">
             <button class="header-nav-btn ${this.state.route === 'dashboard' ? 'active' : ''}" onclick="App.navigate('dashboard')">Dashboard</button>
+            ${this.Permissions.can('canManagePasswords') ? '<button class="header-nav-btn" onclick="App.showPasswordModal()">🔑 Manage Users</button>' : ''}
           </nav>
           <div class="app-header-right">
             <div class="header-user">
               <div class="header-user-avatar">${esc(initials)}</div>
               <div style="display:flex;flex-direction:column;line-height:1.3;">
                 <span>${esc(user.display_name || 'User')}</span>
-                <span class="role-badge role-badge--${user.role || 'pm'}">${this.Permissions.roleLabel()}</span>
+                <span class="role-badge role-badge--${user.role || 'viewer'}">${this.Permissions.roleLabel()}</span>
               </div>
             </div>
             <button class="header-logout" onclick="API.logout()">Sign Out</button>
@@ -158,6 +171,47 @@ const App = {
   },
 
   bindShell() { },
+
+  showPasswordModal() {
+    const targets = this.Permissions.canChangePasswordOf();
+    if (targets.length === 0) { this.toast('You do not have permission to change passwords', 'error'); return; }
+    const roleLabels = { admin: 'Admin', opsmgr: 'Ops Mgr', pm: 'PM', '3d': '3D Viewer' };
+    const options = targets.map(u => `<option value="${u}">${roleLabels[u] || u} (${u})</option>`).join('');
+    this.showModal('🔑 Change Password', `
+      <div class="form-grid" style="grid-template-columns:1fr;">
+        <div class="form-group">
+          <label class="form-label">Select User</label>
+          <select class="form-select" id="cp-user">${options}</select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">New Password</label>
+          <input class="form-input" id="cp-pass" type="password" placeholder="Min 8 characters" minlength="8">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm Password</label>
+          <input class="form-input" id="cp-confirm" type="password" placeholder="Re-enter password">
+        </div>
+      </div>`, async () => {
+      const target = document.getElementById('cp-user').value;
+      const pass = document.getElementById('cp-pass').value;
+      const confirm = document.getElementById('cp-confirm').value;
+      if (!pass || pass.length < 8) { this.toast('Password must be at least 8 characters', 'warning'); return; }
+      if (pass !== confirm) { this.toast('Passwords do not match', 'warning'); return; }
+      const res = await API.changePassword(target, pass);
+      if (res.error) { this.toast(res.error, 'error'); return; }
+      this.closeModal();
+      this.toast(`Password updated for ${target}!`, 'success');
+    });
+  },
+
+  async deleteProject(id, name) {
+    if (!this.Permissions.can('canDeleteProject')) { this.toast('You do not have permission to delete projects', 'error'); return; }
+    if (!confirm(`Are you sure you want to delete "${name}"? This cannot be undone.`)) return;
+    const res = await API.deleteProject(id);
+    if (res.error) { this.toast(res.error, 'error'); return; }
+    this.toast('Project deleted', 'success');
+    this.navigate('dashboard');
+  },
 
   renderDashboard() {
     return `
@@ -215,9 +269,10 @@ const App = {
     const c = document.getElementById('project-list');
     if (!c) return;
     if (this.state.projects.length === 0) {
-      c.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏗️</div><div class="empty-state-title">No Projects Yet</div><div class="empty-state-desc">Create a new project or import an estimate from SmartPlans to get started.</div><button class="btn btn-primary" onclick="App.showNewProjectModal()">+ New Project</button></div>`;
+      c.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏗️</div><div class="empty-state-title">No Projects Yet</div><div class="empty-state-desc">Create a new project or import an estimate from SmartPlans to get started.</div>${this.Permissions.can('canCreateProject') ? '<button class="btn btn-primary" onclick="App.showNewProjectModal()">+ New Project</button>' : ''}</div>`;
       return;
     }
+    const canDelete = this.Permissions.can('canDeleteProject');
     c.innerHTML = `<div class="project-grid">${this.state.projects.map(p => `
       <div class="project-card" onclick="App.navigate('project/${p.id}/overview')">
         <div class="project-card-header">
@@ -230,6 +285,7 @@ const App = {
           <div class="project-card-stat"><div>Contract</div><div class="project-card-stat-value">$${formatMoney(p.current_contract_value || 0)}</div></div>
           <div class="project-card-stat"><div>Billed</div><div class="project-card-stat-value">$${formatMoney(p.total_billed || 0)}</div></div>
         </div>
+        ${canDelete && p.status === 'complete' ? `<button class="btn btn-danger btn-sm" style="margin-top:10px;width:100%;" onclick="event.stopPropagation(); App.deleteProject('${p.id}', '${esc(p.name).replace(/'/g, "\\'")}')">🗑 Delete Completed Project</button>` : ''}
       </div>`).join('')}</div>`;
   },
 
@@ -246,8 +302,10 @@ const App = {
       { id: 'punch', icon: '✅', label: 'Punch List' },
       { id: 'contacts', icon: '👥', label: 'Contacts' },
       { id: 'documents', icon: '📁', label: 'Documents' },
-      { id: 'settings', icon: '⚙️', label: 'Settings' },
     ];
+    if (this.Permissions.can('canEditProject')) {
+      items.push({ id: 'settings', icon: '⚙️', label: 'Settings' });
+    }
     return `
       <aside class="app-sidebar">
         <div class="sidebar-section">
@@ -297,7 +355,10 @@ const App = {
           <h1 class="page-title">${esc(p.name)}</h1>
           <p class="page-subtitle">${p.project_number ? '#' + esc(p.project_number) + ' · ' : ''}${esc(p.type || 'Project')} · <span class="badge badge--${p.status}">${formatStatus(p.status)}</span></p>
         </div>
-        <div class="page-actions"><button class="btn btn-secondary" onclick="App.navigate('project/${p.id}/settings')">⚙️ Settings</button></div>
+        <div class="page-actions">
+          ${this.Permissions.can('canEditProject') ? `<button class="btn btn-secondary" onclick="App.navigate('project/${p.id}/settings')">⚙️ Settings</button>` : ''}
+          ${this.Permissions.can('canDeleteProject') && p.status === 'complete' ? `<button class="btn btn-danger" onclick="App.deleteProject('${p.id}', '${esc(p.name).replace(/'/g, "\\'")}')">🗑 Delete Project</button>` : ''}
+        </div>
       </div>
       <div class="metric-grid">
         <div class="metric-card metric-card--sky"><div class="metric-icon">📋</div><div class="metric-value">$${formatMoney(p.original_contract_value || 0)}</div><div class="metric-label">Original Contract</div></div>
