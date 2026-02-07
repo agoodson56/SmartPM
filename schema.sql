@@ -308,12 +308,33 @@ CREATE INDEX IF NOT EXISTS idx_punch_project ON punch_items(project_id);
 CREATE INDEX IF NOT EXISTS idx_documents_project ON documents(project_id);
 CREATE INDEX IF NOT EXISTS idx_activity_project ON activity_log(project_id);
 
--- SEED: Default admin user (password: 3dtsi2026)
+-- SEED: Default users with role-based access
+-- Admin (password: SmartAdmin2026!) — Full access: all modules, create/edit/delete everything
 INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, role) VALUES (
   '00000000000000000000000000000001',
   'admin',
-  '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918',
+  '2acae1a4f8bb9f49d6ba5c284d761739a778762b3a4b0512ecc6c8360ac923ef',
   'Administrator',
   'agoodson@3dtsi.com',
   'admin'
+);
+
+-- Ops Manager (password: SmartOps2026!) — Operational access: edit projects, logs, schedules; no user/financial mgmt
+INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, role) VALUES (
+  '00000000000000000000000000000002',
+  'opsmgr',
+  'fa2dc6f4ebbd72bde9d5adbeeeb3e1fcb37d6a0bc501047e80bbca74294213ad',
+  'Operations Manager',
+  'ops@3dtsi.com',
+  'ops_mgr'
+);
+
+-- Project Manager (password: SmartPM2026!) — PM access: view-heavy, edit own projects/logs only
+INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, role) VALUES (
+  '00000000000000000000000000000003',
+  'pm',
+  'af88c4ddc866702bd349fa83d8efa95e9586a5d81dc2f63fdbfd21c4eebbe5ac',
+  'Project Manager',
+  'pm@3dtsi.com',
+  'pm'
 );

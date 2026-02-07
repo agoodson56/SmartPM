@@ -16,6 +16,24 @@ const App = {
     toasts: [],
   },
 
+  // ── Role-Based Permissions ────────────────────────────────
+  Permissions: {
+    roles: {
+      admin: { label: 'Admin', canCreateProject: true, canEditProject: true, canDeleteProject: true, canManageFinancials: true, canManageUsers: true, canEditLogs: true, canEditRFIs: true, canEditCOs: true, canEditSubmittals: true, canEditPunch: true, canEditContacts: true, canImport: true },
+      ops_mgr: { label: 'Ops Mgr', canCreateProject: true, canEditProject: true, canDeleteProject: false, canManageFinancials: false, canManageUsers: false, canEditLogs: true, canEditRFIs: true, canEditCOs: false, canEditSubmittals: true, canEditPunch: true, canEditContacts: true, canImport: true },
+      pm: { label: 'PM', canCreateProject: false, canEditProject: false, canDeleteProject: false, canManageFinancials: false, canManageUsers: false, canEditLogs: true, canEditRFIs: false, canEditCOs: false, canEditSubmittals: false, canEditPunch: false, canEditContacts: true, canImport: false },
+    },
+    can(action) {
+      const role = (API.user && API.user.role) || 'pm';
+      const perms = this.roles[role] || this.roles.pm;
+      return !!perms[action];
+    },
+    roleLabel() {
+      const role = (API.user && API.user.role) || 'pm';
+      return (this.roles[role] || this.roles.pm).label;
+    },
+  },
+
   init() {
     window.addEventListener('hashchange', () => this.parseRoute());
     this.parseRoute();
@@ -127,7 +145,10 @@ const App = {
           <div class="app-header-right">
             <div class="header-user">
               <div class="header-user-avatar">${esc(initials)}</div>
-              <span>${esc(user.display_name || 'User')}</span>
+              <div style="display:flex;flex-direction:column;line-height:1.3;">
+                <span>${esc(user.display_name || 'User')}</span>
+                <span class="role-badge role-badge--${user.role || 'pm'}">${this.Permissions.roleLabel()}</span>
+              </div>
             </div>
             <button class="header-logout" onclick="API.logout()">Sign Out</button>
           </div>
@@ -147,8 +168,8 @@ const App = {
             <p class="page-subtitle">Portfolio overview — all active ELV projects</p>
           </div>
           <div class="page-actions">
-            <button class="btn btn-secondary" id="btn-import-sp">📦 Import from SmartPlans</button>
-            <button class="btn btn-primary" id="btn-new-project">+ New Project</button>
+            ${this.Permissions.can('canImport') ? '<button class="btn btn-secondary" id="btn-import-sp">📦 Import from SmartPlans</button>' : ''}
+            ${this.Permissions.can('canCreateProject') ? '<button class="btn btn-primary" id="btn-new-project">+ New Project</button>' : ''}
           </div>
         </div>
         <div class="metric-grid" id="dashboard-metrics">

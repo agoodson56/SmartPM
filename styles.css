@@ -884,6 +884,33 @@ body {
   color: var(--accent-indigo);
 }
 
+/* ─── Role Badges ─── */
+.role-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  line-height: 16px;
+}
+
+.role-badge--admin {
+  background: var(--accent-emerald-dim);
+  color: var(--accent-emerald);
+}
+
+.role-badge--ops_mgr {
+  background: var(--accent-amber-dim);
+  color: var(--accent-amber);
+}
+
+.role-badge--pm {
+  background: var(--accent-sky-dim);
+  color: var(--accent-sky);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    FORMS
    ═══════════════════════════════════════════════════════════════ */
