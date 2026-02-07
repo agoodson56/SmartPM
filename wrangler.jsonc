@@ -1,0 +1,11 @@
+{
+    "name": "smartpm",
+    "pages_build_output_dir": ".",
+    "d1_databases": [
+        {
+            "binding": "DB",
+            "database_name": "smartpm-db",
+            "database_id": "67649d70-3817-4b7b-94d7-62fc6769496d"
+        }
+    ]
+}
