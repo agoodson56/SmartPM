@@ -23,10 +23,10 @@ const App = {
   // Viewer:  view-only (3D role)
   Permissions: {
     roles: {
-      admin: { label: 'Admin', canCreateProject: true, canEditProject: true, canDeleteProject: true, canEditAllData: true, canEditMaterialLabor: true, canManagePasswords: true, canImport: true },
-      ops_mgr: { label: 'Ops Mgr', canCreateProject: true, canEditProject: true, canDeleteProject: false, canEditAllData: true, canEditMaterialLabor: true, canManagePasswords: true, canImport: true },
-      pm: { label: 'PM', canCreateProject: false, canEditProject: false, canDeleteProject: false, canEditAllData: false, canEditMaterialLabor: true, canManagePasswords: false, canImport: false },
-      viewer: { label: '3D', canCreateProject: false, canEditProject: false, canDeleteProject: false, canEditAllData: false, canEditMaterialLabor: false, canManagePasswords: false, canImport: false },
+      admin: { label: 'Admin', canCreateProject: true, canEditProject: true, canDeleteProject: true, canEditAllData: true, canEditMaterialLabor: true, canManagePasswords: true, canImport: true, canEditInfraBudget: true },
+      ops_mgr: { label: 'Ops Mgr', canCreateProject: true, canEditProject: true, canDeleteProject: false, canEditAllData: true, canEditMaterialLabor: true, canManagePasswords: true, canImport: true, canEditInfraBudget: true },
+      pm: { label: 'PM', canCreateProject: false, canEditProject: false, canDeleteProject: false, canEditAllData: false, canEditMaterialLabor: true, canManagePasswords: false, canImport: false, canEditInfraBudget: false },
+      viewer: { label: '3D', canCreateProject: false, canEditProject: false, canDeleteProject: false, canEditAllData: false, canEditMaterialLabor: false, canManagePasswords: false, canImport: false, canEditInfraBudget: false },
     },
     can(action) {
       const role = (API.user && API.user.role) || 'viewer';

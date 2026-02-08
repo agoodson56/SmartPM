@@ -3,7 +3,17 @@
 // PUT    /api/projects/:id/infrastructure/:locId — Update location
 // DELETE /api/projects/:id/infrastructure/:locId — Delete location
 // POST   /api/projects/:id/infrastructure/:locId — Add item/run/labor (action-based)
+//
+// BUDGET LOCK POLICY:
+//   budgeted_* fields are AI-set from SmartPlans import.
+//   Only admin and ops_manager can modify budget values.
+//   project_manager and viewer can only update actual/installed values.
 // ═══════════════════════════════════════════════════════════════
+
+// Helper: can this user modify budget fields?
+function canEditBudget(role) {
+    return role === 'admin' || role === 'ops_manager';
+}
 
 export async function onRequestGet(context) {
     const { env, params } = context;
@@ -64,12 +74,17 @@ export async function onRequestPost(context) {
         const body = await request.json();
         const action = body.action;
         const id = crypto.randomUUID().replace(/-/g, '');
+        const role = data.user.role;
 
+        // ─── ADD EQUIPMENT ITEM ───
         if (action === 'add_item') {
             if (!body.item_name || !body.category) {
                 return Response.json({ error: 'Item name and category required' }, { status: 400 });
             }
-            const budgetedCost = (body.budgeted_qty || 0) * (body.unit_cost || 0);
+            // Only admin/ops can set budget — PM adds get 0 budget (must be approved)
+            const budgetedQty = canEditBudget(role) ? (body.budgeted_qty || 0) : 0;
+            const unitCost = canEditBudget(role) ? (body.unit_cost || 0) : 0;
+            const budgetedCost = canEditBudget(role) ? (body.budgeted_cost || budgetedQty * unitCost) : 0;
             await env.DB.prepare(`
               INSERT INTO location_items (id, location_id, project_id, category, item_name, model, unit,
                 budgeted_qty, installed_qty, unit_cost, budgeted_cost, actual_cost, status, notes)
@@ -78,9 +93,9 @@ export async function onRequestPost(context) {
                 id, params.locId, params.id,
                 body.category, body.item_name, body.model || null,
                 body.unit || 'ea',
-                body.budgeted_qty || 0, body.installed_qty || 0,
-                body.unit_cost || 0,
-                body.budgeted_cost || budgetedCost,
+                budgetedQty, body.installed_qty || 0,
+                unitCost,
+                budgetedCost,
                 body.actual_cost || 0,
                 body.status || 'planned',
                 body.notes || null,
@@ -88,10 +103,13 @@ export async function onRequestPost(context) {
             return Response.json({ id, success: true }, { status: 201 });
         }
 
+        // ─── ADD CABLE RUN ───
         if (action === 'add_run') {
             if (!body.cable_type || !body.destination) {
                 return Response.json({ error: 'Cable type and destination required' }, { status: 400 });
             }
+            const budgetedQty = canEditBudget(role) ? (body.budgeted_qty || 0) : 0;
+            const budgetedLaborHrs = canEditBudget(role) ? (body.budgeted_labor_hrs || 0) : 0;
             await env.DB.prepare(`
               INSERT INTO cable_runs (id, source_location_id, project_id, run_label, cable_type,
                 destination, destination_floor, pathway, budgeted_qty, installed_qty,
@@ -104,18 +122,20 @@ export async function onRequestPost(context) {
                 body.destination,
                 body.destination_floor || null,
                 body.pathway || null,
-                body.budgeted_qty || 0, body.installed_qty || 0,
-                body.budgeted_labor_hrs || 0, body.actual_labor_hrs || 0,
+                budgetedQty, body.installed_qty || 0,
+                budgetedLaborHrs, body.actual_labor_hrs || 0,
                 body.status || 'planned',
                 body.notes || null,
             ).run();
             return Response.json({ id, success: true }, { status: 201 });
         }
 
+        // ─── ADD LABOR ENTRY ───
         if (action === 'add_labor') {
             if (!body.task_type) {
                 return Response.json({ error: 'Task type is required' }, { status: 400 });
             }
+            const budgetedHours = canEditBudget(role) ? (body.budgeted_hours || 0) : 0;
             await env.DB.prepare(`
               INSERT INTO location_labor (id, location_id, project_id, task_type, description,
                 budgeted_hours, actual_hours, worker_count, date_worked, notes)
@@ -124,7 +144,7 @@ export async function onRequestPost(context) {
                 id, params.locId, params.id,
                 body.task_type,
                 body.description || null,
-                body.budgeted_hours || 0, body.actual_hours || 0,
+                budgetedHours, body.actual_hours || 0,
                 body.worker_count || 1,
                 body.date_worked || null,
                 body.notes || null,
@@ -132,13 +152,24 @@ export async function onRequestPost(context) {
             return Response.json({ id, success: true }, { status: 201 });
         }
 
+        // ─── UPDATE EQUIPMENT ITEM ───
         if (action === 'update_item') {
             if (!body.item_id) return Response.json({ error: 'item_id required' }, { status: 400 });
             const sets = [];
             const vals = [];
-            for (const key of ['installed_qty', 'actual_cost', 'status', 'notes', 'budgeted_qty', 'unit_cost', 'budgeted_cost']) {
+
+            // Fields anyone can update (actuals only)
+            for (const key of ['installed_qty', 'actual_cost', 'status', 'notes']) {
                 if (body[key] !== undefined) { sets.push(`${key} = ?`); vals.push(body[key]); }
             }
+
+            // Budget fields — LOCKED to admin/ops only
+            if (canEditBudget(role)) {
+                for (const key of ['budgeted_qty', 'unit_cost', 'budgeted_cost']) {
+                    if (body[key] !== undefined) { sets.push(`${key} = ?`); vals.push(body[key]); }
+                }
+            }
+
             if (sets.length === 0) return Response.json({ error: 'No fields to update' }, { status: 400 });
             sets.push(`updated_at = datetime('now')`);
             vals.push(body.item_id, params.locId);
@@ -146,13 +177,24 @@ export async function onRequestPost(context) {
             return Response.json({ success: true });
         }
 
+        // ─── UPDATE CABLE RUN ───
         if (action === 'update_run') {
             if (!body.run_id) return Response.json({ error: 'run_id required' }, { status: 400 });
             const sets = [];
             const vals = [];
-            for (const key of ['installed_qty', 'actual_labor_hrs', 'status', 'notes', 'budgeted_qty', 'budgeted_labor_hrs']) {
+
+            // Fields anyone can update (actuals only)
+            for (const key of ['installed_qty', 'actual_labor_hrs', 'status', 'notes']) {
                 if (body[key] !== undefined) { sets.push(`${key} = ?`); vals.push(body[key]); }
             }
+
+            // Budget fields — LOCKED to admin/ops only
+            if (canEditBudget(role)) {
+                for (const key of ['budgeted_qty', 'budgeted_labor_hrs']) {
+                    if (body[key] !== undefined) { sets.push(`${key} = ?`); vals.push(body[key]); }
+                }
+            }
+
             if (sets.length === 0) return Response.json({ error: 'No fields to update' }, { status: 400 });
             sets.push(`updated_at = datetime('now')`);
             vals.push(body.run_id, params.locId);
@@ -160,13 +202,24 @@ export async function onRequestPost(context) {
             return Response.json({ success: true });
         }
 
+        // ─── UPDATE LABOR ENTRY ───
         if (action === 'update_labor') {
             if (!body.labor_id) return Response.json({ error: 'labor_id required' }, { status: 400 });
             const sets = [];
             const vals = [];
-            for (const key of ['actual_hours', 'budgeted_hours', 'worker_count', 'notes', 'date_worked']) {
+
+            // Fields anyone can update (actuals only)
+            for (const key of ['actual_hours', 'worker_count', 'notes', 'date_worked']) {
                 if (body[key] !== undefined) { sets.push(`${key} = ?`); vals.push(body[key]); }
             }
+
+            // Budget fields — LOCKED to admin/ops only
+            if (canEditBudget(role)) {
+                for (const key of ['budgeted_hours']) {
+                    if (body[key] !== undefined) { sets.push(`${key} = ?`); vals.push(body[key]); }
+                }
+            }
+
             if (sets.length === 0) return Response.json({ error: 'No fields to update' }, { status: 400 });
             sets.push(`updated_at = datetime('now')`);
             vals.push(body.labor_id, params.locId);
@@ -174,19 +227,23 @@ export async function onRequestPost(context) {
             return Response.json({ success: true });
         }
 
+        // ─── DELETE ACTIONS — admin/ops only ───
         if (action === 'delete_item') {
+            if (!canEditBudget(role)) return Response.json({ error: 'Only admin or ops manager can delete AI-imported items' }, { status: 403 });
             if (!body.item_id) return Response.json({ error: 'item_id required' }, { status: 400 });
             await env.DB.prepare(`DELETE FROM location_items WHERE id = ? AND location_id = ?`).bind(body.item_id, params.locId).run();
             return Response.json({ success: true });
         }
 
         if (action === 'delete_run') {
+            if (!canEditBudget(role)) return Response.json({ error: 'Only admin or ops manager can delete AI-imported runs' }, { status: 403 });
             if (!body.run_id) return Response.json({ error: 'run_id required' }, { status: 400 });
             await env.DB.prepare(`DELETE FROM cable_runs WHERE id = ? AND source_location_id = ?`).bind(body.run_id, params.locId).run();
             return Response.json({ success: true });
         }
 
         if (action === 'delete_labor') {
+            if (!canEditBudget(role)) return Response.json({ error: 'Only admin or ops manager can delete AI-imported labor entries' }, { status: 403 });
             if (!body.labor_id) return Response.json({ error: 'labor_id required' }, { status: 400 });
             await env.DB.prepare(`DELETE FROM location_labor WHERE id = ? AND location_id = ?`).bind(body.labor_id, params.locId).run();
             return Response.json({ success: true });
@@ -201,6 +258,10 @@ export async function onRequestPost(context) {
 
 export async function onRequestPut(context) {
     const { env, request, params, data } = context;
+    // Only admin/ops can modify location metadata
+    if (!canEditBudget(data.user.role)) {
+        return Response.json({ error: 'Only admin or ops manager can modify location settings' }, { status: 403 });
+    }
     try {
         const body = await request.json();
         await env.DB.prepare(`
@@ -222,6 +283,10 @@ export async function onRequestPut(context) {
 
 export async function onRequestDelete(context) {
     const { env, params, data } = context;
+    // Only admin can delete locations
+    if (data.user.role !== 'admin') {
+        return Response.json({ error: 'Only admin can delete infrastructure locations' }, { status: 403 });
+    }
     try {
         await env.DB.prepare(`DELETE FROM locations WHERE id = ? AND project_id = ?`).bind(params.locId, params.id).run();
         await env.DB.prepare(
