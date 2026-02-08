@@ -132,34 +132,38 @@ export async function onRequestPost(context) {
         const locId = crypto.randomUUID().replace(/-/g, '');
         locSortOrder++;
         await env.DB.prepare(`
-                    INSERT INTO locations (id, project_id, name, type, floor, room_number, description, sort_order)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                `).bind(
+          INSERT INTO locations (id, project_id, name, type, floor, room_number, building, description, sort_order)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
           locId, id,
           loc.name || 'Location ' + locSortOrder,
           loc.type || 'idf',
           loc.floor || null,
           loc.room_number || null,
+          loc.building || null,
           'AI-imported from SmartPlans analysis',
           locSortOrder,
         ).run();
 
-        // Import equipment items with AI-set budgets
+        // Import equipment items with AI-set budgets (unit, unit_cost, budgeted_cost)
         if (loc.items && Array.isArray(loc.items)) {
           for (const item of loc.items) {
             const itemId = crypto.randomUUID().replace(/-/g, '');
-            const budgetedCost = item.budgeted_cost || ((item.budgeted_qty || 0) * (item.unit_cost || 0));
+            const unitCost = item.unit_cost || 0;
+            const budgetedQty = item.budgeted_qty || 1;
+            const budgetedCost = item.budgeted_cost || (budgetedQty * unitCost);
             await env.DB.prepare(`
-                            INSERT INTO location_items (id, location_id, project_id, category, item_name,
-                                budgeted_qty, budgeted_cost, unit_cost, status)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'planned')
-                        `).bind(
+              INSERT INTO location_items (id, location_id, project_id, category, item_name, unit,
+                budgeted_qty, budgeted_cost, unit_cost, status)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'planned')
+            `).bind(
               itemId, locId, id,
               item.category || 'other',
               item.item_name || 'Unknown Item',
-              item.budgeted_qty || 1,
+              item.unit || 'ea',
+              budgetedQty,
               budgetedCost,
-              item.unit_cost || 0,
+              unitCost,
             ).run();
           }
         }
@@ -169,10 +173,10 @@ export async function onRequestPost(context) {
           for (const run of loc.cable_runs) {
             const runId = crypto.randomUUID().replace(/-/g, '');
             await env.DB.prepare(`
-                            INSERT INTO cable_runs (id, source_location_id, project_id, cable_type,
-                                destination, budgeted_qty, status)
-                            VALUES (?, ?, ?, ?, ?, ?, 'planned')
-                        `).bind(
+              INSERT INTO cable_runs (id, source_location_id, project_id, cable_type,
+                destination, budgeted_qty, status)
+              VALUES (?, ?, ?, ?, ?, ?, 'planned')
+            `).bind(
               runId, locId, id,
               run.cable_type || 'cat6a',
               run.destination || loc.name + ' drops',

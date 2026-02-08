@@ -12,7 +12,7 @@
 
 // Helper: can this user modify budget fields?
 function canEditBudget(role) {
-    return role === 'admin' || role === 'ops_manager';
+    return role === 'admin' || role === 'ops_mgr';
 }
 
 export async function onRequestGet(context) {

@@ -12,6 +12,15 @@ export async function onRequestGet(context) {
 
         const locations = locs.results || [];
 
+        // Budget health calculator: 🟢 green <80%, 🟡 yellow 80-100%, 🔴 red >100%
+        function budgetHealth(actual, budgeted) {
+            if (!budgeted || budgeted <= 0) return 'green';
+            const pct = (actual / budgeted) * 100;
+            if (pct > 100) return 'red';
+            if (pct >= 80) return 'yellow';
+            return 'green';
+        }
+
         // Build summaries for each location
         const enriched = await Promise.all(locations.map(async (loc) => {
             const [itemsRes, runsRes, laborRes] = await Promise.all([
@@ -40,6 +49,12 @@ export async function onRequestGet(context) {
             const budgetedLabor = (laborRes?.budgeted_labor || 0) + (runsRes?.budgeted_run_labor || 0);
             const actualLabor = (laborRes?.actual_labor || 0) + (runsRes?.actual_run_labor || 0);
 
+            const materialHealth = budgetHealth(actualMaterial, budgetedMaterial);
+            const laborHealth = budgetHealth(actualLabor, budgetedLabor);
+            // Overall health is the worst of material and labor
+            const overallHealth = materialHealth === 'red' || laborHealth === 'red' ? 'red'
+                : materialHealth === 'yellow' || laborHealth === 'yellow' ? 'yellow' : 'green';
+
             return {
                 ...loc,
                 summary: {
@@ -51,12 +66,18 @@ export async function onRequestGet(context) {
                     installed_cable_ft: runsRes?.installed_cable_ft || 0,
                     budgeted_material: budgetedMaterial,
                     actual_material: actualMaterial,
+                    material_pct: budgetedMaterial > 0 ? Math.round((actualMaterial / budgetedMaterial) * 100) : 0,
                     material_variance: actualMaterial - budgetedMaterial,
                     budgeted_labor: budgetedLabor,
                     actual_labor: actualLabor,
+                    labor_pct: budgetedLabor > 0 ? Math.round((actualLabor / budgetedLabor) * 100) : 0,
                     labor_variance: actualLabor - budgetedLabor,
                     material_over: actualMaterial > budgetedMaterial && budgetedMaterial > 0,
                     labor_over: actualLabor > budgetedLabor && budgetedLabor > 0,
+                    // Traffic light system
+                    material_health: materialHealth,
+                    labor_health: laborHealth,
+                    overall_health: overallHealth,
                 },
             };
         }));
@@ -78,10 +99,17 @@ export async function onRequestGet(context) {
         const idfCount = locations.filter(l => l.type === 'idf').length;
         const trCount = locations.filter(l => l.type === 'tr').length;
 
+        const projectMaterialHealth = budgetHealth(totals.actual_material, totals.budgeted_material);
+        const projectLaborHealth = budgetHealth(totals.actual_labor, totals.budgeted_labor);
+        const projectOverallHealth = projectMaterialHealth === 'red' || projectLaborHealth === 'red' ? 'red'
+            : projectMaterialHealth === 'yellow' || projectLaborHealth === 'yellow' ? 'yellow' : 'green';
+
         return Response.json({
             locations: enriched,
             totals: {
                 ...totals,
+                material_pct: totals.budgeted_material > 0 ? Math.round((totals.actual_material / totals.budgeted_material) * 100) : 0,
+                labor_pct: totals.budgeted_labor > 0 ? Math.round((totals.actual_labor / totals.budgeted_labor) * 100) : 0,
                 material_variance: totals.actual_material - totals.budgeted_material,
                 labor_variance: totals.actual_labor - totals.budgeted_labor,
                 material_over: totals.actual_material > totals.budgeted_material && totals.budgeted_material > 0,
@@ -89,6 +117,10 @@ export async function onRequestGet(context) {
                 mdf_count: mdfCount,
                 idf_count: idfCount,
                 tr_count: trCount,
+                // Traffic lights
+                material_health: projectMaterialHealth,
+                labor_health: projectLaborHealth,
+                overall_health: projectOverallHealth,
             },
         });
     } catch (err) {

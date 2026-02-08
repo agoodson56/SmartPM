@@ -1,13 +1,39 @@
 // ═══════════════════════════════════════════════════════════════
 // SMARTPM — INFRASTRUCTURE MODULE (MDF/IDF Tracker)
-// AI-Driven Installation Tracking with Budget Lock
+// AI-Driven Installation Tracking with Budget Lock & Traffic Lights
 //
 // BUDGET LOCK POLICY:
 //   Budgeted values come from SmartPlans AI analysis.
 //   Only Admin/Ops Mgr can modify budgets.
 //   PMs can only update installed quantities, actual costs, and status.
-//   This prevents field manipulation of budget targets.
+//
+// TRAFFIC LIGHT SYSTEM:
+//   🟢 Green  = Budget usage under 80% — on track
+//   🟡 Yellow = Budget usage 80–100% — approaching limit
+//   🔴 Red    = Budget usage over 100% — OVER BUDGET
 // ═══════════════════════════════════════════════════════════════
+
+// Traffic light helper
+function trafficLight(health) {
+  if (health === 'red') return '🔴';
+  if (health === 'yellow') return '🟡';
+  return '🟢';
+}
+function healthColor(health) {
+  if (health === 'red') return 'var(--error, #ef4444)';
+  if (health === 'yellow') return 'var(--warning, #f59e0b)';
+  return 'var(--success, #10b981)';
+}
+function healthCardClass(health) {
+  if (health === 'red') return 'metric-card--rose';
+  if (health === 'yellow') return 'metric-card--amber';
+  return 'metric-card--emerald';
+}
+function progressColor(health) {
+  if (health === 'red') return 'background:var(--error, #ef4444)';
+  if (health === 'yellow') return 'background:var(--warning, #f59e0b)';
+  return '';
+}
 
 App.renderInfrastructure = async function (c) {
   const canBudget = this.Permissions.can('canEditInfraBudget');
@@ -18,13 +44,15 @@ App.renderInfrastructure = async function (c) {
   const locations = res.locations || [];
   const t = res.totals || {};
 
-  // Render totals
-  const matPct = t.budgeted_material > 0 ? ((t.actual_material / t.budgeted_material) * 100).toFixed(0) : 0;
-  const labPct = t.budgeted_labor > 0 ? ((t.actual_labor / t.budgeted_labor) * 100).toFixed(0) : 0;
+  // Render totals with traffic lights
+  const matH = t.material_health || 'green';
+  const labH = t.labor_health || 'green';
+  const overH = t.overall_health || 'green';
   document.getElementById('infra-totals').innerHTML = `
+    <div class="metric-card ${healthCardClass(overH)}"><div class="metric-icon">${trafficLight(overH)}</div><div class="metric-value" style="font-size:22px;">${overH === 'green' ? 'ON TRACK' : overH === 'yellow' ? 'CAUTION' : 'OVER BUDGET'}</div><div class="metric-label">Overall Health</div></div>
     <div class="metric-card metric-card--sky"><div class="metric-icon">🏢</div><div class="metric-value">${t.mdf_count || 0} MDF / ${t.idf_count || 0} IDF</div><div class="metric-label">Locations</div></div>
-    <div class="metric-card ${t.material_over ? 'metric-card--rose' : 'metric-card--emerald'}"><div class="metric-icon">${t.material_over ? '🚨' : '📦'}</div><div class="metric-value">$${formatMoney(t.actual_material)} / $${formatMoney(t.budgeted_material)}</div><div class="metric-label">Material ${matPct}%${t.material_over ? ' — OVER BUDGET' : ''}</div></div>
-    <div class="metric-card ${t.labor_over ? 'metric-card--rose' : 'metric-card--amber'}"><div class="metric-icon">${t.labor_over ? '🚨' : '⏱️'}</div><div class="metric-value">${(t.actual_labor || 0).toFixed(1)} / ${(t.budgeted_labor || 0).toFixed(1)} hrs</div><div class="metric-label">Labor ${labPct}%${t.labor_over ? ' — OVER BUDGET' : ''}</div></div>
+    <div class="metric-card ${healthCardClass(matH)}"><div class="metric-icon">${trafficLight(matH)}</div><div class="metric-value">$${formatMoney(t.actual_material)} / $${formatMoney(t.budgeted_material)}</div><div class="metric-label">Material ${t.material_pct || 0}% 🔒</div></div>
+    <div class="metric-card ${healthCardClass(labH)}"><div class="metric-icon">${trafficLight(labH)}</div><div class="metric-value">${(t.actual_labor || 0).toFixed(1)} / ${(t.budgeted_labor || 0).toFixed(1)} hrs</div><div class="metric-label">Labor ${t.labor_pct || 0}% 🔒</div></div>
     <div class="metric-card metric-card--indigo"><div class="metric-icon">🔌</div><div class="metric-value">${t.complete_runs || 0} / ${t.total_runs || 0}</div><div class="metric-label">Cable Runs Complete</div></div>`;
 
   const list = document.getElementById('infra-locations');
@@ -37,27 +65,28 @@ App.renderInfrastructure = async function (c) {
       const typeColor = typeColors[loc.type] || 'indigo';
       const matW = s.budgeted_material > 0 ? Math.min((s.actual_material / s.budgeted_material) * 100, 100) : 0;
       const labW = s.budgeted_labor > 0 ? Math.min((s.actual_labor / s.budgeted_labor) * 100, 100) : 0;
-      return `<div class="card infra-card" style="margin-bottom:16px;cursor:pointer;" onclick="App.viewLocation('${loc.id}')">
+      const oH = s.overall_health || 'green';
+      return `<div class="card infra-card" style="margin-bottom:16px;cursor:pointer;border-left:4px solid ${healthColor(oH)};" onclick="App.viewLocation('${loc.id}')">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                 <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:20px;">${trafficLight(oH)}</span>
                   <span class="badge badge--${typeColor}" style="font-weight:700;">${loc.type.toUpperCase()}</span>
                   <div><div style="font-weight:700;font-size:15px;">${esc(loc.name)}</div>
                   <div style="font-size:12px;color:var(--text-muted);">${[loc.building, loc.floor ? 'Floor ' + loc.floor : '', loc.room_number ? 'Rm ' + loc.room_number : ''].filter(Boolean).join(' · ') || 'No location details'}</div></div>
                 </div>
                 <div style="display:flex;gap:6px;">
-                  ${s.material_over ? '<span class="badge badge--rose" style="font-size:10px;">⚠ MATERIAL OVER</span>' : ''}
-                  ${s.labor_over ? '<span class="badge badge--rose" style="font-size:10px;">⚠ LABOR OVER</span>' : ''}
+                  ${oH === 'red' ? '<span class="badge badge--rose" style="font-size:10px;">⚠ OVER BUDGET</span>' : oH === 'yellow' ? '<span class="badge badge--amber" style="font-size:10px;">⚠ APPROACHING LIMIT</span>' : '<span class="badge badge--active" style="font-size:10px;">✓ ON TRACK</span>'}
                 </div>
               </div>
               <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;font-size:12px;margin-bottom:10px;">
                 <div><div style="color:var(--text-muted);">Equipment</div><div style="font-weight:600;">${s.installed_items}/${s.total_items} installed</div></div>
                 <div><div style="color:var(--text-muted);">Cable Runs</div><div style="font-weight:600;">${s.complete_runs}/${s.total_runs} complete</div></div>
-                <div><div style="color:var(--text-muted);">Material 🔒</div><div style="font-weight:600;${s.material_over ? 'color:var(--error)' : ''}">$${formatMoney(s.actual_material)} / $${formatMoney(s.budgeted_material)}</div></div>
-                <div><div style="color:var(--text-muted);">Labor 🔒</div><div style="font-weight:600;${s.labor_over ? 'color:var(--error)' : ''};">${(s.actual_labor || 0).toFixed(1)} / ${(s.budgeted_labor || 0).toFixed(1)} hrs</div></div>
+                <div><div style="color:var(--text-muted);">Material ${trafficLight(s.material_health)} 🔒</div><div style="font-weight:600;color:${healthColor(s.material_health)}">$${formatMoney(s.actual_material)} / $${formatMoney(s.budgeted_material)} (${s.material_pct || 0}%)</div></div>
+                <div><div style="color:var(--text-muted);">Labor ${trafficLight(s.labor_health)} 🔒</div><div style="font-weight:600;color:${healthColor(s.labor_health)}">${(s.actual_labor || 0).toFixed(1)} / ${(s.budgeted_labor || 0).toFixed(1)} hrs (${s.labor_pct || 0}%)</div></div>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                <div><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">Material Budget</div><div class="progress-bar" style="height:6px;"><div class="progress-fill" style="width:${matW}%;${s.material_over ? 'background:var(--error)' : ''}"></div></div></div>
-                <div><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">Labor Budget</div><div class="progress-bar" style="height:6px;"><div class="progress-fill" style="width:${labW}%;${s.labor_over ? 'background:var(--error)' : ''}"></div></div></div>
+                <div><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">Material Budget</div><div class="progress-bar" style="height:6px;"><div class="progress-fill" style="width:${matW}%;${progressColor(s.material_health)}"></div></div></div>
+                <div><div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">Labor Budget</div><div class="progress-bar" style="height:6px;"><div class="progress-fill" style="width:${labW}%;${progressColor(s.labor_health)}"></div></div></div>
               </div>
             </div>`;
     }).join('');
@@ -106,10 +135,22 @@ App.viewLocation = async function (locId) {
   const matPct = s.budgeted_material > 0 ? ((s.actual_material / s.budgeted_material) * 100).toFixed(0) : 0;
   const labPct = s.budgeted_labor > 0 ? ((s.actual_labor / s.budgeted_labor) * 100).toFixed(0) : 0;
 
+  // Compute traffic lights locally for location detail
+  function localHealth(actual, budgeted) {
+    if (!budgeted || budgeted <= 0) return 'green';
+    const pct = (actual / budgeted) * 100;
+    if (pct > 100) return 'red';
+    if (pct >= 80) return 'yellow';
+    return 'green';
+  }
+  const matH = localHealth(s.actual_material, s.budgeted_material);
+  const labH = localHealth(s.actual_labor, s.budgeted_labor);
+  const overH = matH === 'red' || labH === 'red' ? 'red' : matH === 'yellow' || labH === 'yellow' ? 'yellow' : 'green';
+
   c.innerHTML = `
     <div class="page-header">
       <div>
-        <h1 class="page-title"><span class="badge badge--${loc.type === 'mdf' ? 'sky' : loc.type === 'tr' ? 'amber' : 'emerald'}" style="font-size:14px;margin-right:8px;">${loc.type.toUpperCase()}</span>${esc(loc.name)}</h1>
+        <h1 class="page-title"><span style="font-size:20px;margin-right:8px;">${trafficLight(overH)}</span><span class="badge badge--${loc.type === 'mdf' ? 'sky' : loc.type === 'tr' ? 'amber' : 'emerald'}" style="font-size:14px;margin-right:8px;">${loc.type.toUpperCase()}</span>${esc(loc.name)}</h1>
         <p class="page-subtitle">${[loc.building, loc.floor ? 'Floor ' + loc.floor : '', loc.room_number ? 'Rm ' + loc.room_number : ''].filter(Boolean).join(' · ') || 'Infrastructure Location'}${loc.description === 'AI-imported from SmartPlans analysis' ? ' · <span style="color:var(--primary);font-weight:600;">🤖 AI-Imported</span>' : ''}</p>
       </div>
       <div class="page-actions">
@@ -118,8 +159,9 @@ App.viewLocation = async function (locId) {
       </div>
     </div>
     <div class="metric-grid" style="margin-bottom:20px;">
-      <div class="metric-card ${s.material_over ? 'metric-card--rose' : 'metric-card--emerald'}"><div class="metric-icon">${s.material_over ? '🚨' : '📦'}</div><div class="metric-value">$${formatMoney(s.actual_material)} / $${formatMoney(s.budgeted_material)}</div><div class="metric-label">Material ${matPct}% 🔒</div></div>
-      <div class="metric-card ${s.labor_over ? 'metric-card--rose' : 'metric-card--amber'}"><div class="metric-icon">${s.labor_over ? '🚨' : '⏱️'}</div><div class="metric-value">${(s.actual_labor || 0).toFixed(1)} / ${(s.budgeted_labor || 0).toFixed(1)} hrs</div><div class="metric-label">Labor ${labPct}% 🔒</div></div>
+      <div class="metric-card ${healthCardClass(overH)}"><div class="metric-icon">${trafficLight(overH)}</div><div class="metric-value" style="font-size:18px;">${overH === 'green' ? 'ON TRACK' : overH === 'yellow' ? 'CAUTION' : 'OVER BUDGET'}</div><div class="metric-label">Location Health</div></div>
+      <div class="metric-card ${healthCardClass(matH)}"><div class="metric-icon">${trafficLight(matH)}</div><div class="metric-value">$${formatMoney(s.actual_material)} / $${formatMoney(s.budgeted_material)}</div><div class="metric-label">Material ${matPct}% 🔒</div></div>
+      <div class="metric-card ${healthCardClass(labH)}"><div class="metric-icon">${trafficLight(labH)}</div><div class="metric-value">${(s.actual_labor || 0).toFixed(1)} / ${(s.budgeted_labor || 0).toFixed(1)} hrs</div><div class="metric-label">Labor ${labPct}% 🔒</div></div>
       <div class="metric-card metric-card--indigo"><div class="metric-icon">🔌</div><div class="metric-value">${formatMoney(s.installed_cable_ft)} / ${formatMoney(s.budgeted_cable_ft)} ft</div><div class="metric-label">Cable Installed</div></div>
     </div>
 
@@ -134,9 +176,9 @@ App.viewLocation = async function (locId) {
     <div id="tab-equipment" class="infra-tab-content">
       <div style="margin-bottom:12px;">${canBudget ? '<button class="btn btn-primary btn-sm" id="btn-add-item">+ Add Equipment</button>' : ''}</div>
       ${items.length === 0 ? '<div class="card" style="padding:30px;text-align:center;color:var(--text-muted);">No equipment — items auto-populate from SmartPlans import.</div>' :
-      `<div class="card"><table class="data-table"><thead><tr><th>Category</th><th>Item</th><th>Model</th><th style="text-align:right">Budget Qty 🔒</th><th style="text-align:right">Installed</th><th style="text-align:right">Budget $ 🔒</th><th style="text-align:right">Actual $</th><th>Status</th>${canEdit ? '<th></th>' : ''}</tr></thead><tbody>${items.map(i => {
-        const over = i.actual_cost > i.budgeted_cost && i.budgeted_cost > 0;
-        return `<tr><td><span class="badge badge--sky" style="font-size:10px;">${esc(i.category)}</span></td><td><strong>${esc(i.item_name)}</strong></td><td style="font-size:12px;">${esc(i.model || '—')}</td><td style="text-align:right">${i.budgeted_qty} ${esc(i.unit)}</td><td style="text-align:right;font-weight:600;">${i.installed_qty} ${esc(i.unit)}</td><td style="text-align:right">$${formatMoney(i.budgeted_cost)}</td><td style="text-align:right;font-weight:600;${over ? 'color:var(--error)' : ''}">$${formatMoney(i.actual_cost)}${over ? ' ⚠' : ''}</td><td><span class="badge badge--${i.status === 'installed' || i.status === 'tested' ? 'active' : i.status === 'ordered' ? 'amber' : 'draft'}">${formatStatus(i.status)}</span></td>${canEdit ? `<td><button class="btn-icon" onclick="App.editItem('${i.id}',${JSON.stringify(i).replace(/"/g, '&quot;')})">✏️</button>${canBudget ? `<button class="btn-icon" onclick="App.deleteInfraEntity('item','${i.id}')">🗑️</button>` : ''}</td>` : ''}</tr>`;
+      `<div class="card"><table class="data-table"><thead><tr><th>Category</th><th>Item</th><th>Model</th><th style="text-align:right">Budget Qty 🔒</th><th style="text-align:right">Installed</th><th style="text-align:right">Unit Cost 🔒</th><th style="text-align:right">Budget $ 🔒</th><th style="text-align:right">Actual $</th><th>Status</th>${canEdit ? '<th></th>' : ''}</tr></thead><tbody>${items.map(i => {
+        const iHealth = localHealth(i.actual_cost, i.budgeted_cost);
+        return `<tr><td><span class="badge badge--sky" style="font-size:10px;">${esc(i.category)}</span></td><td><strong>${esc(i.item_name)}</strong></td><td style="font-size:12px;">${esc(i.model || '—')}</td><td style="text-align:right">${i.budgeted_qty} ${esc(i.unit)}</td><td style="text-align:right;font-weight:600;">${i.installed_qty} ${esc(i.unit)}</td><td style="text-align:right">$${formatMoney(i.unit_cost)}</td><td style="text-align:right">$${formatMoney(i.budgeted_cost)}</td><td style="text-align:right;font-weight:600;color:${healthColor(iHealth)}">${trafficLight(iHealth)} $${formatMoney(i.actual_cost)}</td><td><span class="badge badge--${i.status === 'installed' || i.status === 'tested' ? 'active' : i.status === 'ordered' ? 'amber' : 'draft'}">${formatStatus(i.status)}</span></td>${canEdit ? `<td><button class="btn-icon" onclick="App.editItem('${i.id}',${JSON.stringify(i).replace(/"/g, '&quot;')})">✏️</button>${canBudget ? `<button class="btn-icon" onclick="App.deleteInfraEntity('item','${i.id}')">🗑️</button>` : ''}</td>` : ''}</tr>`;
       }).join('')}</tbody></table></div>`}
     </div>
 
@@ -145,8 +187,8 @@ App.viewLocation = async function (locId) {
       <div style="margin-bottom:12px;">${canBudget ? '<button class="btn btn-primary btn-sm" id="btn-add-run">+ Add Cable Run</button>' : ''}</div>
       ${runs.length === 0 ? '<div class="card" style="padding:30px;text-align:center;color:var(--text-muted);">No cable runs — runs auto-populate from SmartPlans import.</div>' :
       `<div class="card"><table class="data-table"><thead><tr><th>Label</th><th>Type</th><th>Destination</th><th>Pathway</th><th style="text-align:right">Budget ft 🔒</th><th style="text-align:right">Installed ft</th><th style="text-align:right">Labor Hrs</th><th>Status</th>${canEdit ? '<th></th>' : ''}</tr></thead><tbody>${runs.map(r => {
-        const labOver = r.actual_labor_hrs > r.budgeted_labor_hrs && r.budgeted_labor_hrs > 0;
-        return `<tr><td><strong>${esc(r.run_label || '—')}</strong></td><td><span class="badge badge--indigo" style="font-size:10px;">${esc(r.cable_type)}</span></td><td>${esc(r.destination)}${r.destination_floor ? ' (Fl ' + esc(r.destination_floor) + ')' : ''}</td><td style="font-size:12px;">${esc(r.pathway || '—')}</td><td style="text-align:right">${formatMoney(r.budgeted_qty)}</td><td style="text-align:right;font-weight:600;">${formatMoney(r.installed_qty)}</td><td style="text-align:right;${labOver ? 'color:var(--error);font-weight:600' : ''}">${(r.actual_labor_hrs || 0).toFixed(1)} / ${(r.budgeted_labor_hrs || 0).toFixed(1)}${labOver ? ' ⚠' : ''}</td><td><span class="badge badge--${r.status === 'tested' || r.status === 'labeled' ? 'active' : r.status === 'pulled' || r.status === 'terminated' ? 'amber' : 'draft'}">${formatStatus(r.status)}</span></td>${canEdit ? `<td><button class="btn-icon" onclick="App.editRun('${r.id}',${JSON.stringify(r).replace(/"/g, '&quot;')})">✏️</button>${canBudget ? `<button class="btn-icon" onclick="App.deleteInfraEntity('run','${r.id}')">🗑️</button>` : ''}</td>` : ''}</tr>`;
+        const rHealth = localHealth(r.actual_labor_hrs, r.budgeted_labor_hrs);
+        return `<tr><td><strong>${esc(r.run_label || '—')}</strong></td><td><span class="badge badge--indigo" style="font-size:10px;">${esc(r.cable_type)}</span></td><td>${esc(r.destination)}${r.destination_floor ? ' (Fl ' + esc(r.destination_floor) + ')' : ''}</td><td style="font-size:12px;">${esc(r.pathway || '—')}</td><td style="text-align:right">${formatMoney(r.budgeted_qty)}</td><td style="text-align:right;font-weight:600;">${formatMoney(r.installed_qty)}</td><td style="text-align:right;color:${healthColor(rHealth)};font-weight:600;">${trafficLight(rHealth)} ${(r.actual_labor_hrs || 0).toFixed(1)} / ${(r.budgeted_labor_hrs || 0).toFixed(1)}</td><td><span class="badge badge--${r.status === 'tested' || r.status === 'labeled' ? 'active' : r.status === 'pulled' || r.status === 'terminated' ? 'amber' : 'draft'}">${formatStatus(r.status)}</span></td>${canEdit ? `<td><button class="btn-icon" onclick="App.editRun('${r.id}',${JSON.stringify(r).replace(/"/g, '&quot;')})">✏️</button>${canBudget ? `<button class="btn-icon" onclick="App.deleteInfraEntity('run','${r.id}')">🗑️</button>` : ''}</td>` : ''}</tr>`;
       }).join('')}</tbody></table></div>`}
     </div>
 
@@ -155,8 +197,8 @@ App.viewLocation = async function (locId) {
       <div style="margin-bottom:12px;">${canEdit ? '<button class="btn btn-primary btn-sm" id="btn-add-labor">+ Add Labor Entry</button>' : ''}</div>
       ${labor.length === 0 ? '<div class="card" style="padding:30px;text-align:center;color:var(--text-muted);">No labor entries added yet.</div>' :
       `<div class="card"><table class="data-table"><thead><tr><th>Task</th><th>Description</th><th>Date</th><th style="text-align:right">Crew</th><th style="text-align:right">Budget Hrs 🔒</th><th style="text-align:right">Actual Hrs</th>${canEdit ? '<th></th>' : ''}</tr></thead><tbody>${labor.map(l => {
-        const over = l.actual_hours > l.budgeted_hours && l.budgeted_hours > 0;
-        return `<tr><td><span class="badge badge--amber" style="font-size:10px;">${formatStatus(l.task_type)}</span></td><td>${esc(l.description || '—')}</td><td>${formatDate(l.date_worked)}</td><td style="text-align:right">${l.worker_count}</td><td style="text-align:right">${(l.budgeted_hours || 0).toFixed(1)}</td><td style="text-align:right;font-weight:600;${over ? 'color:var(--error)' : ''}">${(l.actual_hours || 0).toFixed(1)}${over ? ' ⚠' : ''}</td>${canEdit ? `<td><button class="btn-icon" onclick="App.editLabor('${l.id}',${JSON.stringify(l).replace(/"/g, '&quot;')})">✏️</button>${canBudget ? `<button class="btn-icon" onclick="App.deleteInfraEntity('labor','${l.id}')">🗑️</button>` : ''}</td>` : ''}</tr>`;
+        const lHealth = localHealth(l.actual_hours, l.budgeted_hours);
+        return `<tr><td><span class="badge badge--amber" style="font-size:10px;">${formatStatus(l.task_type)}</span></td><td>${esc(l.description || '—')}</td><td>${formatDate(l.date_worked)}</td><td style="text-align:right">${l.worker_count}</td><td style="text-align:right">${(l.budgeted_hours || 0).toFixed(1)}</td><td style="text-align:right;font-weight:600;color:${healthColor(lHealth)}">${trafficLight(lHealth)} ${(l.actual_hours || 0).toFixed(1)}</td>${canEdit ? `<td><button class="btn-icon" onclick="App.editLabor('${l.id}',${JSON.stringify(l).replace(/"/g, '&quot;')})">✏️</button>${canBudget ? `<button class="btn-icon" onclick="App.deleteInfraEntity('labor','${l.id}')">🗑️</button>` : ''}</td>` : ''}</tr>`;
       }).join('')}</tbody></table></div>`}
     </div>`;
 
@@ -268,6 +310,7 @@ App.editItem = function (itemId, item) {
       <div class="form-group form-full"><label class="form-label">Item</label><div style="font-weight:600;padding:8px 0;">${esc(item.item_name)} (${esc(item.category)})</div></div>
       <div class="form-group form-full"><div style="padding:8px 12px;background:var(--bg-card);border-radius:6px;border:1px solid var(--border);font-size:12px;display:flex;gap:20px;">
         <span>🔒 Budget Qty: <strong>${item.budgeted_qty} ${esc(item.unit)}</strong></span>
+        <span>🔒 Unit Cost: <strong>$${formatMoney(item.unit_cost)}</strong></span>
         <span>🔒 Budget Cost: <strong>$${formatMoney(item.budgeted_cost)}</strong></span>
       </div></div>
       <div class="form-group"><label class="form-label">Installed Qty</label><input class="form-input" id="ue-iqty" type="number" step="1" value="${item.installed_qty || 0}"></div>
@@ -314,10 +357,6 @@ App.editLabor = function (laborId, lab) {
       <div class="form-group"><label class="form-label">Crew Size</label><input class="form-input" id="ul-crew" type="number" step="1" value="${lab.worker_count || 1}"></div>
     </div>`, async () => {
     const payload = { action: 'update_labor', labor_id: laborId, actual_hours: parseFloat(document.getElementById('ul-ahrs').value) || 0, worker_count: parseInt(document.getElementById('ul-crew').value) || 1 };
-    // Only send budget if user has permission
-    if (canBudget && lab.budgeted_hours !== undefined) {
-      payload.budgeted_hours = lab.budgeted_hours;
-    }
     const r = await API.locationAction(pid, locId, payload);
     if (r.error) { this.toast(r.error, 'error'); return; }
     this.closeModal(); this.toast('Labor updated', 'success'); this.viewLocation(locId);
