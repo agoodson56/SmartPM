@@ -295,6 +295,77 @@ CREATE TABLE IF NOT EXISTS activity_log (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
+-- INFRASTRUCTURE LOCATIONS (MDF / IDF / TR)
+CREATE TABLE IF NOT EXISTS locations (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'idf',
+  floor TEXT,
+  room_number TEXT,
+  building TEXT,
+  description TEXT,
+  sort_order INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- EQUIPMENT / MATERIAL INSIDE EACH LOCATION
+CREATE TABLE IF NOT EXISTS location_items (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  location_id TEXT NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  category TEXT NOT NULL,
+  item_name TEXT NOT NULL,
+  model TEXT,
+  unit TEXT DEFAULT 'ea',
+  budgeted_qty REAL DEFAULT 0,
+  installed_qty REAL DEFAULT 0,
+  unit_cost REAL DEFAULT 0,
+  budgeted_cost REAL DEFAULT 0,
+  actual_cost REAL DEFAULT 0,
+  status TEXT DEFAULT 'planned',
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- CABLE RUNS FROM EACH LOCATION
+CREATE TABLE IF NOT EXISTS cable_runs (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  source_location_id TEXT NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  run_label TEXT,
+  cable_type TEXT NOT NULL,
+  destination TEXT NOT NULL,
+  destination_floor TEXT,
+  pathway TEXT,
+  budgeted_qty REAL DEFAULT 0,
+  installed_qty REAL DEFAULT 0,
+  budgeted_labor_hrs REAL DEFAULT 0,
+  actual_labor_hrs REAL DEFAULT 0,
+  status TEXT DEFAULT 'planned',
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- LABOR TRACKING PER LOCATION
+CREATE TABLE IF NOT EXISTS location_labor (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  location_id TEXT NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  task_type TEXT NOT NULL,
+  description TEXT,
+  budgeted_hours REAL DEFAULT 0,
+  actual_hours REAL DEFAULT 0,
+  worker_count INTEGER DEFAULT 1,
+  date_worked TEXT,
+  notes TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
 -- INDEXES
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
 CREATE INDEX IF NOT EXISTS idx_sov_project ON sov_items(project_id);
@@ -307,6 +378,10 @@ CREATE INDEX IF NOT EXISTS idx_daily_logs_project ON daily_logs(project_id, log_
 CREATE INDEX IF NOT EXISTS idx_punch_project ON punch_items(project_id);
 CREATE INDEX IF NOT EXISTS idx_documents_project ON documents(project_id);
 CREATE INDEX IF NOT EXISTS idx_activity_project ON activity_log(project_id);
+CREATE INDEX IF NOT EXISTS idx_locations_project ON locations(project_id);
+CREATE INDEX IF NOT EXISTS idx_location_items_loc ON location_items(location_id);
+CREATE INDEX IF NOT EXISTS idx_cable_runs_loc ON cable_runs(source_location_id);
+CREATE INDEX IF NOT EXISTS idx_location_labor_loc ON location_labor(location_id);
 
 -- SEED: Default users with role-based access
 -- Admin (password: SmartAdmin2026!) — Full access: edit all, manage passwords, delete completed projects

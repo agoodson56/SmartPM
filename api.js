@@ -117,6 +117,14 @@ const API = {
   updateContact(id, data) { return this.request('PUT', `/contacts/${id}`, data); },
   deleteContact(id) { return this.request('DELETE', `/contacts/${id}`); },
 
+  // Infrastructure (MDF/IDF)
+  getInfrastructure(projectId) { return this.request('GET', `/projects/${projectId}/infrastructure`); },
+  getLocation(projectId, locId) { return this.request('GET', `/projects/${projectId}/infrastructure/${locId}`); },
+  createLocation(projectId, data) { return this.request('POST', `/projects/${projectId}/infrastructure`, data); },
+  updateLocation(projectId, locId, data) { return this.request('PUT', `/projects/${projectId}/infrastructure/${locId}`, data); },
+  deleteLocation(projectId, locId) { return this.request('DELETE', `/projects/${projectId}/infrastructure/${locId}`); },
+  locationAction(projectId, locId, data) { return this.request('POST', `/projects/${projectId}/infrastructure/${locId}`, data); },
+
   // Dashboard
   getDashboard() { return this.request('GET', '/dashboard'); },
 };
