@@ -32,7 +32,19 @@ App.addSOVItem = function () {
         this.renderSOV(document.getElementById('project-content'));
     });
 };
-App.editSOVItem = function (itemId) { this.toast('Edit modal — coming soon', 'info'); };
+App.editSOVItem = async function (itemId) {
+    const pid = this.state.projectId;
+    const res = await API.getSOV(pid);
+    if (res.error) { this.toast(res.error, 'error'); return; }
+    const item = (res.items || []).find(i => i.id === itemId);
+    if (!item) { this.toast('Item not found', 'error'); return; }
+    this.showModal('Edit SOV Item', `<div class="form-grid"><div class="form-group"><label class="form-label">Item Number</label><input class="form-input" id="se-num" value="${esc(item.item_number)}"></div><div class="form-group"><label class="form-label">Division</label><select class="form-select" id="se-div"><option value="">Select...</option><option value="Division 27" ${item.division === 'Division 27' ? 'selected' : ''}>Division 27</option><option value="Division 28" ${item.division === 'Division 28' ? 'selected' : ''}>Division 28</option><option value="Special Conditions" ${item.division === 'Special Conditions' ? 'selected' : ''}>Special Conditions</option><option value="General Conditions" ${item.division === 'General Conditions' ? 'selected' : ''}>General Conditions</option></select></div><div class="form-group form-full"><label class="form-label">Description</label><input class="form-input" id="se-desc" value="${esc(item.description)}"></div><div class="form-group"><label class="form-label">Material ($)</label><input class="form-input" id="se-mat" type="number" step="0.01" value="${item.material_cost || 0}"></div><div class="form-group"><label class="form-label">Labor ($)</label><input class="form-input" id="se-lab" type="number" step="0.01" value="${item.labor_cost || 0}"></div><div class="form-group"><label class="form-label">Equipment ($)</label><input class="form-input" id="se-eq" type="number" step="0.01" value="${item.equipment_cost || 0}"></div><div class="form-group"><label class="form-label">Subcontractor ($)</label><input class="form-input" id="se-sub" type="number" step="0.01" value="${item.sub_cost || 0}"></div><div class="form-group"><label class="form-label">% Complete</label><input class="form-input" id="se-pct" type="number" step="0.1" value="${item.total_completed_pct || 0}"></div></div>`, async () => {
+        const r = await API.updateSOVItem(pid, itemId, { item_number: document.getElementById('se-num').value.trim(), description: document.getElementById('se-desc').value.trim(), division: document.getElementById('se-div').value, material_cost: parseFloat(document.getElementById('se-mat').value) || 0, labor_cost: parseFloat(document.getElementById('se-lab').value) || 0, equipment_cost: parseFloat(document.getElementById('se-eq').value) || 0, sub_cost: parseFloat(document.getElementById('se-sub').value) || 0, total_completed_pct: parseFloat(document.getElementById('se-pct').value) || 0 });
+        if (r.error) { this.toast(r.error, 'error'); return; }
+        this.closeModal(); this.toast('SOV item updated', 'success');
+        this.renderSOV(document.getElementById('project-content'));
+    });
+};
 App.deleteSOVItem = async function (itemId) {
     if (!confirm('Delete this SOV item?')) return;
     const res = await API.deleteSOVItem(this.state.projectId, itemId);
@@ -64,14 +76,32 @@ App.viewBillingPeriod = async function (periodId) {
     if (res.error) { this.toast(res.error, 'error'); return; }
     const p = res.period; const lines = res.lineItems || [];
     const totalCompleted = lines.reduce((s, l) => s + (l.total_completed_value || 0), 0);
+    const statuses = ['draft', 'submitted', 'approved', 'paid'];
     this.showModal(`Billing Period #${p.period_number}`, `
     <div class="metric-grid" style="margin-bottom:16px;">
       <div class="metric-card metric-card--sky"><div class="metric-value">$${formatMoney(p.contract_sum_to_date)}</div><div class="metric-label">Contract Sum</div></div>
       <div class="metric-card metric-card--emerald"><div class="metric-value">$${formatMoney(totalCompleted)}</div><div class="metric-label">Completed</div></div>
       <div class="metric-card metric-card--amber"><div class="metric-value">$${formatMoney(p.current_payment_due)}</div><div class="metric-label">Payment Due</div></div>
     </div>
-    <div style="max-height:400px;overflow-y:auto;"><table class="data-table"><thead><tr><th>Item</th><th>Description</th><th style="text-align:right">Scheduled</th><th style="text-align:right">Completed %</th><th style="text-align:right">This Period</th></tr></thead><tbody>${lines.map(l => `<tr><td>${esc(l.item_number)}</td><td>${esc(l.description)}</td><td style="text-align:right">$${formatMoney(l.scheduled_value)}</td><td style="text-align:right">${(l.total_completed_pct || 0).toFixed(1)}%</td><td style="text-align:right">$${formatMoney(l.work_completed_this_period)}</td></tr>`).join('')}</tbody></table></div>
-    <div style="margin-top:12px;"><span class="badge badge--${p.status}">${formatStatus(p.status)}</span></div>`, null);
+    <div style="margin-bottom:12px;display:flex;gap:12px;align-items:center;">
+      <label class="form-label" style="margin:0;">Status:</label>
+      <select class="form-select" id="bp-status" style="width:auto;">${statuses.map(s => `<option value="${s}" ${p.status === s ? 'selected' : ''}>${formatStatus(s)}</option>`).join('')}</select>
+    </div>
+    <div style="max-height:400px;overflow-y:auto;"><table class="data-table"><thead><tr><th>Item</th><th>Description</th><th style="text-align:right">Scheduled</th><th style="text-align:right">% Complete</th><th style="text-align:right">This Period ($)</th></tr></thead><tbody>${lines.map((l, idx) => `<tr><td>${esc(l.item_number)}</td><td>${esc(l.description)}</td><td style="text-align:right">$${formatMoney(l.scheduled_value)}</td><td style="text-align:right"><input class="form-input" style="width:80px;text-align:right;padding:4px 8px;" type="number" step="0.1" min="0" max="100" data-bp-line="${idx}" data-bp-field="pct" value="${(l.total_completed_pct || 0).toFixed(1)}"></td><td style="text-align:right"><input class="form-input" style="width:100px;text-align:right;padding:4px 8px;" type="number" step="0.01" data-bp-line="${idx}" data-bp-field="period" value="${(l.work_completed_this_period || 0).toFixed(2)}"></td></tr>`).join('')}</tbody></table></div>`, async () => {
+        const updatedLines = lines.map((l, idx) => {
+            const pctInput = document.querySelector(`[data-bp-line="${idx}"][data-bp-field="pct"]`);
+            const periodInput = document.querySelector(`[data-bp-line="${idx}"][data-bp-field="period"]`);
+            const pct = parseFloat(pctInput?.value) || 0;
+            const thisPeriod = parseFloat(periodInput?.value) || 0;
+            const completedValue = (l.scheduled_value || 0) * pct / 100;
+            return { id: l.id, sov_item_id: l.sov_item_id, total_completed_pct: pct, total_completed_value: completedValue, work_completed_this_period: thisPeriod };
+        });
+        const totalEarned = updatedLines.reduce((s, l) => s + l.total_completed_value, 0);
+        const r = await API.updateBillingPeriod(pid, periodId, { period: { status: document.getElementById('bp-status').value, total_completed_stored: totalEarned, current_payment_due: totalEarned - (p.less_previous_payments || 0) }, lineItems: updatedLines });
+        if (r.error) { this.toast(r.error, 'error'); return; }
+        this.closeModal(); this.toast('Billing period updated', 'success');
+        this.renderBilling(document.getElementById('project-content'));
+    });
 };
 
 // ─── CHANGE ORDERS ─────────────────────────────────────────────
@@ -102,7 +132,25 @@ App.addCO = function () {
         this.renderChangeOrders(document.getElementById('project-content'));
     });
 };
-App.editCO = function (coId) { this.toast('Edit CO — use inline actions', 'info'); };
+App.editCO = async function (coId) {
+    const pid = this.state.projectId;
+    const res = await API.getChangeOrders(pid);
+    if (res.error) { this.toast(res.error, 'error'); return; }
+    const co = (res.changeOrders || []).find(c => c.id === coId);
+    if (!co) { this.toast('CO not found', 'error'); return; }
+    this.showModal('Edit Change Order #' + co.co_number, `<div class="form-grid"><div class="form-group form-full"><label class="form-label">Title</label><input class="form-input" id="ce-title" value="${esc(co.title)}"></div><div class="form-group"><label class="form-label">Status</label><select class="form-select" id="ce-status"><option value="pending" ${co.status === 'pending' ? 'selected' : ''}>Pending</option><option value="submitted" ${co.status === 'submitted' ? 'selected' : ''}>Submitted</option><option value="approved" ${co.status === 'approved' ? 'selected' : ''}>Approved</option><option value="rejected" ${co.status === 'rejected' ? 'selected' : ''}>Rejected</option></select></div><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="ce-type"><option value="addition" ${co.type === 'addition' ? 'selected' : ''}>Addition</option><option value="deduction" ${co.type === 'deduction' ? 'selected' : ''}>Deduction</option><option value="no_cost" ${co.type === 'no_cost' ? 'selected' : ''}>No Cost</option></select></div><div class="form-group"><label class="form-label">Material ($)</label><input class="form-input" id="ce-mat" type="number" step="0.01" value="${co.material_cost || 0}"></div><div class="form-group"><label class="form-label">Labor ($)</label><input class="form-input" id="ce-lab" type="number" step="0.01" value="${co.labor_cost || 0}"></div><div class="form-group"><label class="form-label">Equipment ($)</label><input class="form-input" id="ce-eq" type="number" step="0.01" value="${co.equipment_cost || 0}"></div><div class="form-group"><label class="form-label">Markup %</label><input class="form-input" id="ce-markup" type="number" step="0.1" value="${co.markup_pct || 0}"></div><div class="form-group"><label class="form-label">Schedule Impact (days)</label><input class="form-input" id="ce-days" type="number" value="${co.schedule_impact_days || 0}"></div><div class="form-group"><label class="form-label">Approved Date</label><input class="form-input" id="ce-apdate" type="date" value="${co.approved_date || ''}"></div><div class="form-group"><label class="form-label">Approved By</label><input class="form-input" id="ce-apby" value="${esc(co.approved_by || '')}"></div><div class="form-group form-full"><label class="form-label">Notes</label><textarea class="form-input" id="ce-notes" rows="2">${esc(co.notes || '')}</textarea></div></div>`, async () => {
+        const mat = parseFloat(document.getElementById('ce-mat').value) || 0;
+        const lab = parseFloat(document.getElementById('ce-lab').value) || 0;
+        const eq = parseFloat(document.getElementById('ce-eq').value) || 0;
+        const mkp = parseFloat(document.getElementById('ce-markup').value) || 0;
+        const subtotal = mat + lab + eq;
+        const total = subtotal + (subtotal * mkp / 100);
+        const r = await API.updateChangeOrder(pid, coId, { title: document.getElementById('ce-title').value.trim(), status: document.getElementById('ce-status').value, type: document.getElementById('ce-type').value, material_cost: mat, labor_cost: lab, equipment_cost: eq, markup_pct: mkp, total_amount: total, schedule_impact_days: parseInt(document.getElementById('ce-days').value) || 0, approved_date: document.getElementById('ce-apdate').value || null, approved_by: document.getElementById('ce-apby').value.trim(), notes: document.getElementById('ce-notes').value });
+        if (r.error) { this.toast(r.error, 'error'); return; }
+        this.closeModal(); this.toast('Change order updated', 'success');
+        this.renderChangeOrders(document.getElementById('project-content'));
+    });
+};
 
 // ─── RFIs ──────────────────────────────────────────────────────
 App.renderRFIs = async function (c) {
@@ -136,18 +184,30 @@ App.addRFI = function () {
         this.renderRFIs(document.getElementById('project-content'));
     });
 };
-App.editRFI = function (rfiId) { this.toast('RFI edit — coming soon', 'info'); };
+App.editRFI = async function (rfiId) {
+    const pid = this.state.projectId;
+    const res = await API.getRFIs(pid);
+    if (res.error) { this.toast(res.error, 'error'); return; }
+    const rfi = (res.rfis || []).find(r => r.id === rfiId);
+    if (!rfi) { this.toast('RFI not found', 'error'); return; }
+    this.showModal('Edit RFI #' + rfi.rfi_number, `<div class="form-grid"><div class="form-group form-full"><label class="form-label">Subject</label><input class="form-input" id="re-subj" value="${esc(rfi.subject)}"></div><div class="form-group"><label class="form-label">Status</label><select class="form-select" id="re-status"><option value="draft" ${rfi.status === 'draft' ? 'selected' : ''}>Draft</option><option value="submitted" ${rfi.status === 'submitted' ? 'selected' : ''}>Submitted</option><option value="responded" ${rfi.status === 'responded' ? 'selected' : ''}>Responded</option><option value="closed" ${rfi.status === 'closed' ? 'selected' : ''}>Closed</option></select></div><div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="re-pri"><option value="low" ${rfi.priority === 'low' ? 'selected' : ''}>Low</option><option value="normal" ${rfi.priority === 'normal' ? 'selected' : ''}>Normal</option><option value="high" ${rfi.priority === 'high' ? 'selected' : ''}>High</option><option value="critical" ${rfi.priority === 'critical' ? 'selected' : ''}>Critical</option></select></div><div class="form-group form-full"><label class="form-label">Question</label><textarea class="form-input" id="re-q" rows="2">${esc(rfi.question)}</textarea></div><div class="form-group"><label class="form-label">Submitted To</label><input class="form-input" id="re-to" value="${esc(rfi.submitted_to || '')}"></div><div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="re-due" type="date" value="${rfi.due_date || ''}"></div><hr class="form-divider" style="grid-column:1/-1"><div class="form-section-title" style="grid-column:1/-1">Response</div><div class="form-group form-full"><label class="form-label">Response</label><textarea class="form-input" id="re-resp" rows="3">${esc(rfi.response || '')}</textarea></div><div class="form-group"><label class="form-label">Responded By</label><input class="form-input" id="re-rby" value="${esc(rfi.responded_by || '')}"></div><div class="form-group"><label class="form-label">Response Date</label><input class="form-input" id="re-rdate" type="date" value="${rfi.response_date || ''}"></div><div class="form-group"><label class="form-label">Cost Impact?</label><select class="form-select" id="re-cost"><option value="0" ${!rfi.cost_impact ? 'selected' : ''}>No</option><option value="1" ${rfi.cost_impact ? 'selected' : ''}>Yes</option></select></div><div class="form-group"><label class="form-label">Schedule Impact?</label><select class="form-select" id="re-sched"><option value="0" ${!rfi.schedule_impact ? 'selected' : ''}>No</option><option value="1" ${rfi.schedule_impact ? 'selected' : ''}>Yes</option></select></div></div>`, async () => {
+        const r = await API.updateRFI(pid, rfiId, { subject: document.getElementById('re-subj').value.trim(), status: document.getElementById('re-status').value, priority: document.getElementById('re-pri').value, question: document.getElementById('re-q').value, submitted_to: document.getElementById('re-to').value.trim(), due_date: document.getElementById('re-due').value || null, response: document.getElementById('re-resp').value, responded_by: document.getElementById('re-rby').value.trim(), response_date: document.getElementById('re-rdate').value || null, cost_impact: parseInt(document.getElementById('re-cost').value), schedule_impact: parseInt(document.getElementById('re-sched').value) });
+        if (r.error) { this.toast(r.error, 'error'); return; }
+        this.closeModal(); this.toast('RFI updated', 'success');
+        this.renderRFIs(document.getElementById('project-content'));
+    });
+};
 
 // ─── SUBMITTALS ────────────────────────────────────────────────
 App.renderSubmittals = async function (c) {
-    c.innerHTML = `<div class="page-header"><div><h1 class="page-title">📎 Submittal Log</h1><p class="page-subtitle">Track equipment and material submittals</p></div><div class="page-actions"><button class="btn btn-primary" id="btn-new-sub">+ New Submittal</button></div></div><div class="card"><table class="data-table"><thead><tr><th>Number</th><th>Title</th><th>Spec Section</th><th>Status</th><th>Due</th><th>Rev</th></tr></thead><tbody id="sub-body"><tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">Loading...</td></tr></tbody></table></div>`;
+    c.innerHTML = `<div class="page-header"><div><h1 class="page-title">📎 Submittal Log</h1><p class="page-subtitle">Track equipment and material submittals</p></div><div class="page-actions"><button class="btn btn-primary" id="btn-new-sub">+ New Submittal</button></div></div><div class="card"><table class="data-table"><thead><tr><th>Number</th><th>Title</th><th>Spec Section</th><th>Status</th><th>Due</th><th>Rev</th><th>Actions</th></tr></thead><tbody id="sub-body"><tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted)">Loading...</td></tr></tbody></table></div>`;
     const pid = this.state.projectId;
     const res = await API.getSubmittals(pid);
     if (res.error) { this.toast(res.error, 'error'); return; }
     const subs = res.submittals || [];
     const tbody = document.getElementById('sub-body');
-    if (subs.length === 0) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">No submittals yet.</td></tr>`; }
-    else { tbody.innerHTML = subs.map(s => `<tr><td><strong>${esc(s.submittal_number)}</strong></td><td>${esc(s.title)}</td><td>${esc(s.spec_section || '—')}</td><td><span class="badge badge--${s.status}">${formatStatus(s.status)}</span></td><td>${formatDate(s.due_date)}</td><td>Rev ${s.revision || 0}</td></tr>`).join(''); }
+    if (subs.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted)">No submittals yet.</td></tr>`; }
+    else { tbody.innerHTML = subs.map(s => `<tr><td><strong>${esc(s.submittal_number)}</strong></td><td>${esc(s.title)}</td><td>${esc(s.spec_section || '—')}</td><td><span class="badge badge--${s.status}">${formatStatus(s.status)}</span></td><td>${formatDate(s.due_date)}</td><td>Rev ${s.revision || 0}</td><td><button class="btn btn-sm" onclick="App.editSubmittal('${s.id}')">Edit</button></td></tr>`).join(''); }
     document.getElementById('btn-new-sub').addEventListener('click', () => {
         this.showModal('New Submittal', `<div class="form-grid"><div class="form-group form-full"><label class="form-label">Title *</label><input class="form-input" id="sub-title" placeholder="Submittal title"></div><div class="form-group"><label class="form-label">Spec Section</label><input class="form-input" id="sub-spec" placeholder="e.g. 27 10 00"></div><div class="form-group"><label class="form-label">Category</label><select class="form-select" id="sub-cat"><option value="product_data">Product Data</option><option value="shop_drawings">Shop Drawings</option><option value="samples">Samples</option><option value="test_reports">Test Reports</option><option value="certificates">Certificates</option></select></div><div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="sub-due" type="date"></div><div class="form-group form-full"><label class="form-label">Description</label><textarea class="form-input" id="sub-desc" rows="2"></textarea></div></div>`, async () => {
             const title = document.getElementById('sub-title').value.trim();
@@ -157,6 +217,20 @@ App.renderSubmittals = async function (c) {
             this.closeModal(); this.toast('Submittal created', 'success');
             this.renderSubmittals(c);
         });
+    });
+};
+App.editSubmittal = async function (subId) {
+    const pid = this.state.projectId;
+    const res = await API.getSubmittals(pid);
+    if (res.error) { this.toast(res.error, 'error'); return; }
+    const s = (res.submittals || []).find(x => x.id === subId);
+    if (!s) { this.toast('Submittal not found', 'error'); return; }
+    const statuses = ['in_preparation', 'submitted', 'approved', 'approved_as_noted', 'revise_resubmit', 'rejected', 'closed'];
+    this.showModal('Edit Submittal ' + s.submittal_number, `<div class="form-grid"><div class="form-group form-full"><label class="form-label">Title</label><input class="form-input" id="se2-title" value="${esc(s.title)}"></div><div class="form-group"><label class="form-label">Status</label><select class="form-select" id="se2-status">${statuses.map(st => `<option value="${st}" ${s.status === st ? 'selected' : ''}>${formatStatus(st)}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Spec Section</label><input class="form-input" id="se2-spec" value="${esc(s.spec_section || '')}"></div><div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="se2-due" type="date" value="${s.due_date || ''}"></div><div class="form-group"><label class="form-label">Submitted</label><input class="form-input" id="se2-sub" type="date" value="${s.submitted_date || ''}"></div><div class="form-group"><label class="form-label">Returned</label><input class="form-input" id="se2-ret" type="date" value="${s.returned_date || ''}"></div><div class="form-group"><label class="form-label">Revision</label><input class="form-input" id="se2-rev" type="number" value="${s.revision || 0}"></div><div class="form-group form-full"><label class="form-label">Notes</label><textarea class="form-input" id="se2-notes" rows="2">${esc(s.notes || '')}</textarea></div></div>`, async () => {
+        const r = await API.updateSubmittal(pid, subId, { title: document.getElementById('se2-title').value.trim(), status: document.getElementById('se2-status').value, spec_section: document.getElementById('se2-spec').value.trim(), due_date: document.getElementById('se2-due').value || null, submitted_date: document.getElementById('se2-sub').value || null, returned_date: document.getElementById('se2-ret').value || null, revision: parseInt(document.getElementById('se2-rev').value) || 0, notes: document.getElementById('se2-notes').value });
+        if (r.error) { this.toast(r.error, 'error'); return; }
+        this.closeModal(); this.toast('Submittal updated', 'success');
+        this.renderSubmittals(document.getElementById('project-content'));
     });
 };
 
@@ -169,7 +243,7 @@ App.renderDailyLog = async function (c) {
     const logs = res.logs || [];
     const list = document.getElementById('log-list');
     if (logs.length === 0) { list.innerHTML = `<div style="padding:40px;text-align:center;"><div style="font-size:48px;margin-bottom:12px;opacity:0.3;">📅</div><div style="color:var(--text-muted)">No daily log entries yet.</div></div>`; }
-    else { list.innerHTML = `<table class="data-table"><thead><tr><th>Date</th><th>Weather</th><th>Crew</th><th>Hours</th><th>Work Performed</th></tr></thead><tbody>${logs.map(l => `<tr><td><strong>${formatDate(l.log_date)}</strong></td><td>${esc(l.weather || '—')}</td><td>${l.crew_size || 0}</td><td>${l.hours_worked || 0}</td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc((l.work_performed || '—').substring(0, 80))}</td></tr>`).join('')}</tbody></table>`; }
+    else { list.innerHTML = `<table class="data-table"><thead><tr><th>Date</th><th>Weather</th><th>Crew</th><th>Hours</th><th>Work Performed</th><th>Actions</th></tr></thead><tbody>${logs.map(l => `<tr><td><strong>${formatDate(l.log_date)}</strong></td><td>${esc(l.weather || '—')}</td><td>${l.crew_size || 0}</td><td>${l.hours_worked || 0}</td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc((l.work_performed || '—').substring(0, 80))}</td><td><button class="btn btn-sm" onclick="App.editDailyLog('${l.id}')">Edit</button></td></tr>`).join('')}</tbody></table>`; }
     document.getElementById('btn-new-log').addEventListener('click', () => {
         this.showModal('New Daily Log', `<div class="form-grid"><div class="form-group"><label class="form-label">Date *</label><input class="form-input" id="log-date" type="date" value="${new Date().toISOString().split('T')[0]}"></div><div class="form-group"><label class="form-label">Weather</label><select class="form-select" id="log-wx"><option>Clear</option><option>Partly Cloudy</option><option>Cloudy</option><option>Rain</option><option>Snow</option><option>Wind</option></select></div><div class="form-group"><label class="form-label">Crew Size</label><input class="form-input" id="log-crew" type="number" value="0"></div><div class="form-group"><label class="form-label">Hours Worked</label><input class="form-input" id="log-hrs" type="number" step="0.5" value="8"></div><div class="form-group form-full"><label class="form-label">Work Performed</label><textarea class="form-input" id="log-work" rows="3" placeholder="Describe work performed today..."></textarea></div><div class="form-group form-full"><label class="form-label">Areas Worked</label><input class="form-input" id="log-areas" placeholder="Floors, rooms, areas"></div><div class="form-group form-full"><label class="form-label">Delays / Issues</label><textarea class="form-input" id="log-delays" rows="2"></textarea></div></div>`, async () => {
             const r = await API.createDailyLog(pid, { log_date: document.getElementById('log-date').value, weather: document.getElementById('log-wx').value, crew_size: parseInt(document.getElementById('log-crew').value) || 0, hours_worked: parseFloat(document.getElementById('log-hrs').value) || 0, work_performed: document.getElementById('log-work').value, areas_worked: document.getElementById('log-areas').value, delays: document.getElementById('log-delays').value });
@@ -179,10 +253,23 @@ App.renderDailyLog = async function (c) {
         });
     });
 };
+App.editDailyLog = async function (logId) {
+    const pid = this.state.projectId;
+    const res = await API.getDailyLogs(pid);
+    if (res.error) { this.toast(res.error, 'error'); return; }
+    const l = (res.logs || []).find(x => x.id === logId);
+    if (!l) { this.toast('Log not found', 'error'); return; }
+    this.showModal('Edit Daily Log — ' + formatDate(l.log_date), `<div class="form-grid"><div class="form-group"><label class="form-label">Date</label><input class="form-input" id="le-date" type="date" value="${l.log_date || ''}"></div><div class="form-group"><label class="form-label">Weather</label><select class="form-select" id="le-wx"><option ${l.weather === 'Clear' ? 'selected' : ''}>Clear</option><option ${l.weather === 'Partly Cloudy' ? 'selected' : ''}>Partly Cloudy</option><option ${l.weather === 'Cloudy' ? 'selected' : ''}>Cloudy</option><option ${l.weather === 'Rain' ? 'selected' : ''}>Rain</option><option ${l.weather === 'Snow' ? 'selected' : ''}>Snow</option><option ${l.weather === 'Wind' ? 'selected' : ''}>Wind</option></select></div><div class="form-group"><label class="form-label">Crew Size</label><input class="form-input" id="le-crew" type="number" value="${l.crew_size || 0}"></div><div class="form-group"><label class="form-label">Hours Worked</label><input class="form-input" id="le-hrs" type="number" step="0.5" value="${l.hours_worked || 0}"></div><div class="form-group form-full"><label class="form-label">Work Performed</label><textarea class="form-input" id="le-work" rows="3">${esc(l.work_performed || '')}</textarea></div><div class="form-group form-full"><label class="form-label">Areas Worked</label><input class="form-input" id="le-areas" value="${esc(l.areas_worked || '')}"></div><div class="form-group form-full"><label class="form-label">Delays / Issues</label><textarea class="form-input" id="le-delays" rows="2">${esc(l.delays || '')}</textarea></div><div class="form-group form-full"><label class="form-label">Safety Incidents</label><textarea class="form-input" id="le-safety" rows="2">${esc(l.safety_incidents || '')}</textarea></div></div>`, async () => {
+        const r = await API.updateDailyLog(pid, logId, { weather: document.getElementById('le-wx').value, crew_size: parseInt(document.getElementById('le-crew').value) || 0, hours_worked: parseFloat(document.getElementById('le-hrs').value) || 0, work_performed: document.getElementById('le-work').value, areas_worked: document.getElementById('le-areas').value, delays: document.getElementById('le-delays').value, safety_incidents: document.getElementById('le-safety').value });
+        if (r.error) { this.toast(r.error, 'error'); return; }
+        this.closeModal(); this.toast('Daily log updated', 'success');
+        this.renderDailyLog(document.getElementById('project-content'));
+    });
+};
 
 // ─── PUNCH LIST ────────────────────────────────────────────────
 App.renderPunchList = async function (c) {
-    c.innerHTML = `<div class="page-header"><div><h1 class="page-title">✅ Punch List</h1><p class="page-subtitle">Track deficiency items through closeout</p></div><div class="page-actions"><button class="btn btn-primary" id="btn-new-punch">+ Add Item</button></div></div><div id="punch-summary" class="metric-grid" style="margin-bottom:20px;"></div><div class="card"><table class="data-table"><thead><tr><th>#</th><th>Location</th><th>Description</th><th>Discipline</th><th>Priority</th><th>Status</th><th>Assigned</th></tr></thead><tbody id="punch-body"><tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted)">Loading...</td></tr></tbody></table></div>`;
+    c.innerHTML = `<div class="page-header"><div><h1 class="page-title">✅ Punch List</h1><p class="page-subtitle">Track deficiency items through closeout</p></div><div class="page-actions"><button class="btn btn-primary" id="btn-new-punch">+ Add Item</button></div></div><div id="punch-summary" class="metric-grid" style="margin-bottom:20px;"></div><div class="card"><table class="data-table"><thead><tr><th>#</th><th>Location</th><th>Description</th><th>Discipline</th><th>Priority</th><th>Status</th><th>Assigned</th><th>Actions</th></tr></thead><tbody id="punch-body"><tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">Loading...</td></tr></tbody></table></div>`;
     const pid = this.state.projectId;
     const res = await API.getPunchItems(pid);
     if (res.error) { this.toast(res.error, 'error'); return; }
@@ -195,8 +282,8 @@ App.renderPunchList = async function (c) {
     <div class="metric-card metric-card--emerald"><div class="metric-icon">✅</div><div class="metric-value">${done}</div><div class="metric-label">Complete</div></div>
     <div class="metric-card metric-card--sky"><div class="metric-icon">📊</div><div class="metric-value">${pct}%</div><div class="metric-label">Progress</div></div>`;
     const tbody = document.getElementById('punch-body');
-    if (items.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted)">No punch items. All clear! 🎉</td></tr>`; }
-    else { tbody.innerHTML = items.map(i => `<tr><td>${i.item_number}</td><td>${esc(i.location)}</td><td>${esc(i.description)}</td><td>${esc(i.discipline || '—')}</td><td><span class="badge badge--${i.priority === 'high' ? 'rose' : i.priority === 'low' ? 'sky' : 'amber'}">${formatStatus(i.priority)}</span></td><td><span class="badge badge--${i.status}">${formatStatus(i.status)}</span></td><td>${esc(i.assigned_to || '—')}</td></tr>`).join(''); }
+    if (items.length === 0) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">No punch items. All clear! 🎉</td></tr>`; }
+    else { tbody.innerHTML = items.map(i => `<tr><td>${i.item_number}</td><td>${esc(i.location)}</td><td>${esc(i.description)}</td><td>${esc(i.discipline || '—')}</td><td><span class="badge badge--${i.priority === 'high' ? 'rose' : i.priority === 'low' ? 'sky' : 'amber'}">${formatStatus(i.priority)}</span></td><td><span class="badge badge--${i.status}">${formatStatus(i.status)}</span></td><td>${esc(i.assigned_to || '—')}</td><td><button class="btn btn-sm" onclick="App.editPunchItem('${i.id}')">Edit</button></td></tr>`).join(''); }
     document.getElementById('btn-new-punch').addEventListener('click', () => {
         this.showModal('Add Punch Item', `<div class="form-grid"><div class="form-group"><label class="form-label">Location *</label><input class="form-input" id="pi-loc" placeholder="Room, floor, area"></div><div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="pi-pri"><option value="normal">Normal</option><option value="low">Low</option><option value="high">High</option></select></div><div class="form-group form-full"><label class="form-label">Description *</label><textarea class="form-input" id="pi-desc" rows="2" placeholder="Describe the deficiency..."></textarea></div><div class="form-group"><label class="form-label">Discipline</label><input class="form-input" id="pi-disc"></div><div class="form-group"><label class="form-label">Assigned To</label><input class="form-input" id="pi-assign"></div></div>`, async () => {
             const loc = document.getElementById('pi-loc').value.trim();
@@ -207,6 +294,20 @@ App.renderPunchList = async function (c) {
             this.closeModal(); this.toast(`Punch item #${r.itemNumber} added`, 'success');
             this.renderPunchList(c);
         });
+    });
+};
+App.editPunchItem = async function (itemId) {
+    const pid = this.state.projectId;
+    const res = await API.getPunchItems(pid);
+    if (res.error) { this.toast(res.error, 'error'); return; }
+    const i = (res.items || []).find(x => x.id === itemId);
+    if (!i) { this.toast('Item not found', 'error'); return; }
+    const statuses = ['open', 'in_progress', 'complete', 'verified'];
+    this.showModal('Edit Punch Item #' + i.item_number, `<div class="form-grid"><div class="form-group"><label class="form-label">Location</label><input class="form-input" id="pe-loc" value="${esc(i.location)}"></div><div class="form-group"><label class="form-label">Status</label><select class="form-select" id="pe-status">${statuses.map(st => `<option value="${st}" ${i.status === st ? 'selected' : ''}>${formatStatus(st)}</option>`).join('')}</select></div><div class="form-group form-full"><label class="form-label">Description</label><textarea class="form-input" id="pe-desc" rows="2">${esc(i.description)}</textarea></div><div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="pe-pri"><option value="low" ${i.priority === 'low' ? 'selected' : ''}>Low</option><option value="normal" ${i.priority === 'normal' ? 'selected' : ''}>Normal</option><option value="high" ${i.priority === 'high' ? 'selected' : ''}>High</option></select></div><div class="form-group"><label class="form-label">Assigned To</label><input class="form-input" id="pe-assign" value="${esc(i.assigned_to || '')}"></div><div class="form-group"><label class="form-label">Due Date</label><input class="form-input" id="pe-due" type="date" value="${i.due_date || ''}"></div><div class="form-group"><label class="form-label">Completed Date</label><input class="form-input" id="pe-comp" type="date" value="${i.completed_date || ''}"></div><div class="form-group"><label class="form-label">Verified By</label><input class="form-input" id="pe-vby" value="${esc(i.verified_by || '')}"></div><div class="form-group form-full"><label class="form-label">Notes</label><textarea class="form-input" id="pe-notes" rows="2">${esc(i.notes || '')}</textarea></div></div>`, async () => {
+        const r = await API.updatePunchItem(pid, itemId, { location: document.getElementById('pe-loc').value.trim(), status: document.getElementById('pe-status').value, description: document.getElementById('pe-desc').value.trim(), priority: document.getElementById('pe-pri').value, assigned_to: document.getElementById('pe-assign').value.trim(), due_date: document.getElementById('pe-due').value || null, completed_date: document.getElementById('pe-comp').value || null, verified_by: document.getElementById('pe-vby').value.trim(), notes: document.getElementById('pe-notes').value });
+        if (r.error) { this.toast(r.error, 'error'); return; }
+        this.closeModal(); this.toast('Punch item updated', 'success');
+        this.renderPunchList(document.getElementById('project-content'));
     });
 };
 
@@ -224,7 +325,7 @@ App.renderContacts = async function (c) {
         contacts.forEach(ct => { const r = ct.role || 'other'; if (!roles[r]) roles[r] = []; roles[r].push(ct); });
         list.innerHTML = Object.entries(roles).map(([role, cts]) => `
       <div class="card" style="margin-bottom:16px;"><div class="card-header"><div class="card-title">${formatStatus(role)}</div></div>
-      ${cts.map(ct => `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);"><div><div style="font-weight:600;">${esc(ct.name)}</div><div style="font-size:12px;color:var(--text-muted);">${esc(ct.company || '')}${ct.email ? ' · ' + esc(ct.email) : ''}${ct.phone ? ' · ' + esc(ct.phone) : ''}</div></div><div style="display:flex;gap:8px;">${ct.email ? `<a href="mailto:${esc(ct.email)}" class="btn btn-sm">✉️</a>` : ''} ${ct.phone ? `<a href="tel:${esc(ct.phone)}" class="btn btn-sm">📞</a>` : ''}</div></div>`).join('')}
+      ${cts.map(ct => `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);"><div><div style="font-weight:600;">${esc(ct.name)}</div><div style="font-size:12px;color:var(--text-muted);">${esc(ct.company || '')}${ct.email ? ' · ' + esc(ct.email) : ''}${ct.phone ? ' · ' + esc(ct.phone) : ''}</div></div><div style="display:flex;gap:8px;">${ct.email ? `<a href="mailto:${esc(ct.email)}" class="btn btn-sm">✉️</a>` : ''} ${ct.phone ? `<a href="tel:${esc(ct.phone)}" class="btn btn-sm">📞</a>` : ''}<button class="btn btn-sm" onclick="App.editContact('${ct.id}')">✏️</button><button class="btn btn-sm" onclick="App.deleteContact('${ct.id}')" style="color:var(--error)">🗑️</button></div></div>`).join('')}
       </div>`).join('');
     }
     document.getElementById('btn-new-contact').addEventListener('click', () => {
@@ -238,10 +339,58 @@ App.renderContacts = async function (c) {
         });
     });
 };
+App.editContact = async function (ctId) {
+    const pid = this.state.projectId;
+    const res = await API.getContacts(pid);
+    if (res.error) { this.toast(res.error, 'error'); return; }
+    const ct = (res.contacts || []).find(x => x.id === ctId);
+    if (!ct) { this.toast('Contact not found', 'error'); return; }
+    const roles = ['subcontractor', 'owner', 'architect', 'engineer', 'gc_pm', 'gc_super', 'inspector', 'other'];
+    this.showModal('Edit Contact', `<div class="form-grid"><div class="form-group"><label class="form-label">Name</label><input class="form-input" id="ce-name" value="${esc(ct.name)}"></div><div class="form-group"><label class="form-label">Company</label><input class="form-input" id="ce-co" value="${esc(ct.company || '')}"></div><div class="form-group"><label class="form-label">Role</label><select class="form-select" id="ce-role">${roles.map(r => `<option value="${r}" ${ct.role === r ? 'selected' : ''}>${formatStatus(r)}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="ce-email" type="email" value="${esc(ct.email || '')}"></div><div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="ce-phone" type="tel" value="${esc(ct.phone || '')}"></div></div>`, async () => {
+        const r = await API.updateContact(ctId, { name: document.getElementById('ce-name').value.trim(), company: document.getElementById('ce-co').value.trim(), role: document.getElementById('ce-role').value, email: document.getElementById('ce-email').value.trim(), phone: document.getElementById('ce-phone').value.trim() });
+        if (r.error) { this.toast(r.error, 'error'); return; }
+        this.closeModal(); this.toast('Contact updated', 'success');
+        this.renderContacts(document.getElementById('project-content'));
+    });
+};
+App.deleteContact = async function (ctId) {
+    if (!confirm('Delete this contact?')) return;
+    const r = await API.deleteContact(ctId);
+    if (r.error) { this.toast(r.error, 'error'); return; }
+    this.toast('Contact deleted', 'success');
+    this.renderContacts(document.getElementById('project-content'));
+};
 
 // ─── DOCUMENTS ─────────────────────────────────────────────────
 App.renderDocuments = function (c) {
-    c.innerHTML = `<div class="page-header"><div><h1 class="page-title">📁 Document Manager</h1><p class="page-subtitle">Centralized file storage for project documents</p></div></div><div class="card" style="text-align:center;padding:60px;"><div style="font-size:48px;margin-bottom:16px;">📁</div><div style="font-size:16px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">Document Storage</div><div style="font-size:13px;color:var(--text-muted);max-width:400px;margin:0 auto;">Document upload requires Cloudflare R2 storage configuration. Once R2 is bound to this Worker, drag-and-drop upload will be available here.</div></div>`;
+    const pid = this.state.projectId;
+    const key = `smartpm_docs_${pid}`;
+    const docs = JSON.parse(localStorage.getItem(key) || '[]');
+    const cats = ['drawings', 'specs', 'submittals', 'rfi_responses', 'correspondence', 'photos', 'close_out', 'other'];
+    c.innerHTML = `<div class="page-header"><div><h1 class="page-title">📁 Document Register</h1><p class="page-subtitle">Track project documents and references</p></div><div class="page-actions"><button class="btn btn-primary" id="btn-new-doc">+ Add Document</button></div></div><div class="card"><table class="data-table"><thead><tr><th>Title</th><th>Category</th><th>Reference / Link</th><th>Date</th><th>Actions</th></tr></thead><tbody id="doc-body"></tbody></table></div>`;
+    const tbody = document.getElementById('doc-body');
+    if (docs.length === 0) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted)">No documents registered. Add references to drawings, specs, and project files.</td></tr>`; }
+    else { tbody.innerHTML = docs.map((d, idx) => `<tr><td><strong>${esc(d.title)}</strong></td><td>${formatStatus(d.category)}</td><td>${d.link ? `<a href="${esc(d.link)}" target="_blank" style="color:var(--primary)">${esc(d.link.substring(0, 40))}...</a>` : esc(d.reference || '—')}</td><td>${d.date || '—'}</td><td><button class="btn-icon" onclick="App.deleteDoc(${idx})">🗑️</button></td></tr>`).join(''); }
+    document.getElementById('btn-new-doc').addEventListener('click', () => {
+        this.showModal('Add Document Reference', `<div class="form-grid"><div class="form-group form-full"><label class="form-label">Title *</label><input class="form-input" id="doc-title" placeholder="Document name"></div><div class="form-group"><label class="form-label">Category</label><select class="form-select" id="doc-cat">${cats.map(c2 => `<option value="${c2}">${formatStatus(c2)}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Date</label><input class="form-input" id="doc-date" type="date" value="${new Date().toISOString().split('T')[0]}"></div><div class="form-group form-full"><label class="form-label">Reference / File Number</label><input class="form-input" id="doc-ref" placeholder="e.g. DWG-E101-R3"></div><div class="form-group form-full"><label class="form-label">Link (optional)</label><input class="form-input" id="doc-link" placeholder="https://..."></div></div>`, () => {
+            const title = document.getElementById('doc-title').value.trim();
+            if (!title) { this.toast('Title required', 'warning'); return; }
+            docs.push({ title, category: document.getElementById('doc-cat').value, date: document.getElementById('doc-date').value, reference: document.getElementById('doc-ref').value.trim(), link: document.getElementById('doc-link').value.trim() });
+            localStorage.setItem(key, JSON.stringify(docs));
+            this.closeModal(); this.toast('Document added', 'success');
+            this.renderDocuments(document.getElementById('project-content'));
+        });
+    });
+};
+App.deleteDoc = function (idx) {
+    if (!confirm('Remove this document reference?')) return;
+    const pid = this.state.projectId;
+    const key = `smartpm_docs_${pid}`;
+    const docs = JSON.parse(localStorage.getItem(key) || '[]');
+    docs.splice(idx, 1);
+    localStorage.setItem(key, JSON.stringify(docs));
+    this.toast('Document removed', 'success');
+    this.renderDocuments(document.getElementById('project-content'));
 };
 
 // ─── PROJECT SETTINGS ──────────────────────────────────────────
