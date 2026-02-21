@@ -1400,3 +1400,222 @@ body {
     display: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   AI ASSISTANT — Premium AI Feature Styles
+   ═══════════════════════════════════════════════════════════════ */
+
+.btn-ai {
+  background: linear-gradient(135deg, #a78bfa, #38bdf8);
+  color: white;
+  border: none;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.btn-ai::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transition: left 0.5s;
+}
+
+.btn-ai:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(167, 139, 250, 0.35);
+}
+
+.btn-ai:hover::before {
+  left: 100%;
+}
+
+.btn-ai:active {
+  transform: translateY(0);
+}
+
+/* AI Loading Spinner */
+.ai-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--border-medium);
+  border-top-color: var(--accent-violet);
+  border-right-color: var(--accent-sky);
+  border-radius: 50%;
+  animation: ai-spin 0.8s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* AI Result Modal */
+.ai-result {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.ai-result-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.08), rgba(56, 189, 248, 0.08));
+  border: 1px solid rgba(167, 139, 250, 0.15);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+
+.ai-result-body {
+  padding: 4px 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.ai-result-body h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 20px 0 8px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.ai-result-body h3:first-child {
+  margin-top: 0;
+}
+
+.ai-result-body p {
+  margin-bottom: 10px;
+}
+
+.ai-result-body ul,
+.ai-result-body ol {
+  padding-left: 20px;
+  margin-bottom: 12px;
+}
+
+.ai-result-body li {
+  margin-bottom: 4px;
+}
+
+.ai-result-body strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.ai-result-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.ai-result-body table th {
+  background: var(--bg-surface);
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-medium);
+}
+
+.ai-result-body table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.ai-result-actions {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* AI RFI Cards */
+.ai-rfi-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 10px;
+  transition: border-color 0.15s;
+}
+
+.ai-rfi-card:hover {
+  border-color: var(--accent-violet);
+}
+
+.ai-rfi-card:last-child {
+  margin-bottom: 0;
+}
+
+/* AI Section on Project Overview */
+.ai-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ai-feature-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  text-align: center;
+}
+
+.ai-feature-btn:hover {
+  border-color: var(--accent-violet);
+  background: rgba(167, 139, 250, 0.06);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(167, 139, 250, 0.15);
+}
+
+.ai-feature-btn .ai-feat-icon {
+  font-size: 24px;
+}
+
+.ai-feature-btn .ai-feat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.ai-feature-btn .ai-feat-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}

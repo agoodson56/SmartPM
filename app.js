@@ -303,6 +303,7 @@ const App = {
       { id: 'punch', icon: '✅', label: 'Punch List' },
       { id: 'contacts', icon: '👥', label: 'Contacts' },
       { id: 'documents', icon: '📁', label: 'Documents' },
+      { id: 'ai-assistant', icon: '🤖', label: 'AI Assistant' },
     ];
     if (this.Permissions.can('canEditProject')) {
       items.push({ id: 'settings', icon: '⚙️', label: 'Settings' });
@@ -340,6 +341,7 @@ const App = {
       case 'punch': this.renderPunchList(container); break;
       case 'contacts': this.renderContacts(container); break;
       case 'documents': this.renderDocuments(container); break;
+      case 'ai-assistant': this.renderAIAssistant(container); break;
       case 'settings': this.renderProjectSettings(container); break;
       default: this.renderProjectOverview(container);
     }
@@ -390,6 +392,117 @@ const App = {
             <tr><td style="color:var(--text-muted);padding:6px 0;">Substantial Completion</td><td style="padding:6px 0;">${formatDate(p.substantial_completion)}</td></tr>
             <tr><td style="color:var(--text-muted);padding:6px 0;">Final Completion</td><td style="padding:6px 0;">${formatDate(p.final_completion)}</td></tr>
           </table>
+        </div>
+      </div>
+      <div class="card" style="margin-top:20px;">
+        <div class="card-header">
+          <div class="card-title">🤖 AI Intelligence Hub</div>
+          <div style="font-size:11px;color:var(--accent-violet);font-weight:600;">Powered by Gemini 3.1 Pro</div>
+        </div>
+        <div class="ai-overview-grid">
+          <button class="ai-feature-btn" onclick="AIAssistant.generateDailyLogSummary('${p.id}')">
+            <span class="ai-feat-icon">📊</span>
+            <span class="ai-feat-label">Progress Report</span>
+            <span class="ai-feat-desc">AI summary of daily logs</span>
+          </button>
+          <button class="ai-feature-btn" onclick="AIAssistant.generateSmartRFIs('${p.id}')">
+            <span class="ai-feat-icon">❓</span>
+            <span class="ai-feat-label">Smart RFIs</span>
+            <span class="ai-feat-desc">AI-generated RFI questions</span>
+          </button>
+          <button class="ai-feature-btn" onclick="AIAssistant.analyzeChangeOrderImpact('${p.id}')">
+            <span class="ai-feat-icon">📝</span>
+            <span class="ai-feat-label">CO Impact Analysis</span>
+            <span class="ai-feat-desc">Schedule & cost impact</span>
+          </button>
+          <button class="ai-feature-btn" onclick="AIAssistant.prioritizePunchList('${p.id}')">
+            <span class="ai-feat-icon">✅</span>
+            <span class="ai-feat-label">Punch Priority</span>
+            <span class="ai-feat-desc">AI-ranked closeout plan</span>
+          </button>
+          <button class="ai-feature-btn" onclick="AIAssistant.forecastBudget('${p.id}')">
+            <span class="ai-feat-icon">💰</span>
+            <span class="ai-feat-label">Budget Forecast</span>
+            <span class="ai-feat-desc">Spending trends & EAC</span>
+          </button>
+          <button class="ai-feature-btn" onclick="AIAssistant.validateSOVProgress('${p.id}')">
+            <span class="ai-feat-icon">📋</span>
+            <span class="ai-feat-label">SOV Validation</span>
+            <span class="ai-feat-desc">Cross-check % vs logs</span>
+          </button>
+        </div>
+      </div>`;
+  },
+
+  renderAIAssistant(container) {
+    const pid = this.state.projectId;
+    container.innerHTML = `
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">🤖 AI Assistant</h1>
+          <p class="page-subtitle">Powered by Gemini 3.1 Pro — intelligent project analysis</p>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="card" style="cursor:pointer;" onclick="AIAssistant.generateDailyLogSummary('${pid}')">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+            <div style="font-size:32px;">📊</div>
+            <div>
+              <div style="font-weight:700;font-size:15px;">AI Progress Report</div>
+              <div style="font-size:12px;color:var(--text-muted);">Generate weekly/monthly progress summary</div>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Analyzes your daily log entries to produce a comprehensive progress report with crew productivity, delay tracking, and actionable recommendations.</p>
+        </div>
+        <div class="card" style="cursor:pointer;" onclick="AIAssistant.generateSmartRFIs('${pid}')">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+            <div style="font-size:32px;">❓</div>
+            <div>
+              <div style="font-weight:700;font-size:15px;">Smart RFI Drafting</div>
+              <div style="font-size:12px;color:var(--text-muted);">AI identifies gaps & drafts RFIs</div>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Scans your SOV, infrastructure, and daily logs to identify ambiguities and generates professional RFI questions you can submit directly.</p>
+        </div>
+        <div class="card" style="cursor:pointer;" onclick="AIAssistant.analyzeChangeOrderImpact('${pid}')">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+            <div style="font-size:32px;">📝</div>
+            <div>
+              <div style="font-weight:700;font-size:15px;">Change Order Impact</div>
+              <div style="font-size:12px;color:var(--text-muted);">Schedule & cost impact analysis</div>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Evaluates all change orders to assess cumulative financial impact, schedule implications, risk exposure, and provides trend analysis.</p>
+        </div>
+        <div class="card" style="cursor:pointer;" onclick="AIAssistant.prioritizePunchList('${pid}')">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+            <div style="font-size:32px;">✅</div>
+            <div>
+              <div style="font-weight:700;font-size:15px;">Punch List Priority</div>
+              <div style="font-size:12px;color:var(--text-muted);">AI-ranked resolution order</div>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Ranks open punch items by criticality (safety → code → functional → cosmetic) and generates a day-by-day action plan for efficient closeout.</p>
+        </div>
+        <div class="card" style="cursor:pointer;" onclick="AIAssistant.forecastBudget('${pid}')">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+            <div style="font-size:32px;">💰</div>
+            <div>
+              <div style="font-weight:700;font-size:15px;">Budget Forecasting</div>
+              <div style="font-size:12px;color:var(--text-muted);">Spending trends & completion cost</div>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Analyzes SOV progress, billing history, and change orders to forecast Estimate at Completion (EAC), cash flow, and profit margin.</p>
+        </div>
+        <div class="card" style="cursor:pointer;" onclick="AIAssistant.validateSOVProgress('${pid}')">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+            <div style="font-size:32px;">📋</div>
+            <div>
+              <div style="font-weight:700;font-size:15px;">SOV Progress Validation</div>
+              <div style="font-size:12px;color:var(--text-muted);">Cross-check % vs daily logs</div>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Audits reported completion percentages against daily log evidence to flag overbilling risks, underclaimed items, and recommend adjustments.</p>
         </div>
       </div>`;
   },
