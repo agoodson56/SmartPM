@@ -125,6 +125,12 @@ const API = {
   deleteLocation(projectId, locId) { return this.request('DELETE', `/projects/${projectId}/infrastructure/${locId}`); },
   locationAction(projectId, locId, data) { return this.request('POST', `/projects/${projectId}/infrastructure/${locId}`, data); },
 
+  // Work Breakdown Structure (WBS)
+  getWBS(projectId) { return this.request('GET', `/projects/${projectId}/wbs`); },
+  createWBSTask(projectId, data) { return this.request('POST', `/projects/${projectId}/wbs`, data); },
+  updateWBSTask(projectId, taskId, data) { return this.request('PUT', `/projects/${projectId}/wbs/${taskId}`, data); },
+  deleteWBSTask(projectId, taskId) { return this.request('DELETE', `/projects/${projectId}/wbs/${taskId}`); },
+
   // Dashboard
   getDashboard() { return this.request('GET', '/dashboard'); },
 };

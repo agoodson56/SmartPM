@@ -34,6 +34,13 @@ function progressColor(health) {
   if (health === 'yellow') return 'background:var(--warning, #f59e0b)';
   return '';
 }
+function localHealth(actual, budgeted) {
+  if (!budgeted || budgeted <= 0) return 'green';
+  const pct = (actual / budgeted) * 100;
+  if (pct > 100) return 'red';
+  if (pct >= 80) return 'yellow';
+  return 'green';
+}
 
 App.renderInfrastructure = async function (c) {
   const canBudget = this.Permissions.can('canEditInfraBudget');

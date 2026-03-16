@@ -366,6 +366,46 @@ CREATE TABLE IF NOT EXISTS location_labor (
   updated_at TEXT DEFAULT (datetime('now'))
 );
 
+-- WORK BREAKDOWN STRUCTURE (WBS) — Auto-generated from SmartPlans bid
+CREATE TABLE IF NOT EXISTS wbs_tasks (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  parent_id TEXT REFERENCES wbs_tasks(id) ON DELETE CASCADE,
+  location_id TEXT REFERENCES locations(id) ON DELETE SET NULL,
+  wbs_code TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  phase TEXT,
+  task_type TEXT DEFAULT 'task',
+  sort_order INTEGER DEFAULT 0,
+  -- Budget (locked from SmartPlans import)
+  budgeted_material REAL DEFAULT 0,
+  budgeted_labor_hrs REAL DEFAULT 0,
+  budgeted_labor_cost REAL DEFAULT 0,
+  budgeted_equipment REAL DEFAULT 0,
+  budgeted_total REAL DEFAULT 0,
+  -- Actuals (PM can update)
+  actual_material REAL DEFAULT 0,
+  actual_labor_hrs REAL DEFAULT 0,
+  actual_labor_cost REAL DEFAULT 0,
+  actual_equipment REAL DEFAULT 0,
+  actual_total REAL DEFAULT 0,
+  -- Progress
+  progress_pct REAL DEFAULT 0,
+  status TEXT DEFAULT 'not_started',
+  -- Dates
+  planned_start TEXT,
+  planned_end TEXT,
+  actual_start TEXT,
+  actual_end TEXT,
+  -- Meta
+  assigned_to TEXT,
+  notes TEXT,
+  source TEXT DEFAULT 'manual',
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
 -- INDEXES
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
 CREATE INDEX IF NOT EXISTS idx_sov_project ON sov_items(project_id);
@@ -382,6 +422,9 @@ CREATE INDEX IF NOT EXISTS idx_locations_project ON locations(project_id);
 CREATE INDEX IF NOT EXISTS idx_location_items_loc ON location_items(location_id);
 CREATE INDEX IF NOT EXISTS idx_cable_runs_loc ON cable_runs(source_location_id);
 CREATE INDEX IF NOT EXISTS idx_location_labor_loc ON location_labor(location_id);
+CREATE INDEX IF NOT EXISTS idx_wbs_project ON wbs_tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_wbs_parent ON wbs_tasks(parent_id);
+CREATE INDEX IF NOT EXISTS idx_wbs_location ON wbs_tasks(location_id);
 
 -- SEED: Default users with role-based access
 -- Admin (password: SmartAdmin2026!) — Full access: edit all, manage passwords, delete completed projects

@@ -187,6 +187,121 @@ export async function onRequestPost(context) {
       }
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // Import Work Breakdown Structure (WBS) — auto-generated from bid
+    // Creates hierarchical tasks: Phase → Location → Task
+    // Links to infrastructure locations for material/labor tracking
+    // ═══════════════════════════════════════════════════════════
+    const wbs = pkg.workBreakdown || {};
+    if (wbs.phases && Array.isArray(wbs.phases) && wbs.phases.length > 0) {
+      // Build a lookup map from location names to their location IDs
+      const locationNameMap = {};
+      if (infra.locations && Array.isArray(infra.locations)) {
+        const locRows = await env.DB.prepare(
+          `SELECT id, name FROM locations WHERE project_id = ?`
+        ).bind(id).all();
+        for (const row of (locRows.results || [])) {
+          locationNameMap[row.name] = row.id;
+        }
+      }
+
+      let wbsSortOrder = 0;
+      for (const phase of wbs.phases) {
+        const phaseId = crypto.randomUUID().replace(/-/g, '');
+        wbsSortOrder++;
+        
+        // Calculate phase-level labor cost estimate using avg rate
+        const avgRate = pricing.laborRates
+          ? Object.values(typeof pricing.laborRates === 'string' ? JSON.parse(pricing.laborRates) : pricing.laborRates).reduce((s, v) => s + (typeof v === 'number' ? v : 0), 0) / Math.max(Object.keys(typeof pricing.laborRates === 'string' ? JSON.parse(pricing.laborRates) : pricing.laborRates).length, 1)
+          : 45;
+        const phaseLaborCost = (phase.budgeted_labor_hrs || 0) * avgRate;
+        const phaseTotal = (phase.budgeted_material || 0) + phaseLaborCost;
+
+        await env.DB.prepare(`
+          INSERT INTO wbs_tasks (id, project_id, parent_id, wbs_code, title, description,
+            phase, task_type, sort_order,
+            budgeted_material, budgeted_labor_hrs, budgeted_labor_cost, budgeted_total,
+            status, source)
+          VALUES (?, ?, NULL, ?, ?, ?, ?, 'phase', ?, ?, ?, ?, ?, 'not_started', 'smartplans')
+        `).bind(
+          phaseId, id,
+          phase.code || String(wbsSortOrder),
+          phase.name || `Phase ${wbsSortOrder}`,
+          phase.description || '',
+          phase.phase || '',
+          wbsSortOrder,
+          phase.budgeted_material || 0,
+          phase.budgeted_labor_hrs || 0,
+          phaseLaborCost,
+          phaseTotal,
+        ).run();
+
+        // Import location-level tasks under this phase
+        if (phase.children && Array.isArray(phase.children)) {
+          let locSortIdx = 0;
+          for (const locTask of phase.children) {
+            const locTaskId = crypto.randomUUID().replace(/-/g, '');
+            locSortIdx++;
+            wbsSortOrder++;
+
+            // Try to link to infrastructure location
+            const linkedLocId = locTask.location_name ? (locationNameMap[locTask.location_name] || null) : null;
+            const locLaborCost = (locTask.budgeted_labor_hrs || 0) * avgRate;
+            const locTotal = (locTask.budgeted_material || 0) + locLaborCost;
+
+            await env.DB.prepare(`
+              INSERT INTO wbs_tasks (id, project_id, parent_id, location_id, wbs_code, title, description,
+                phase, task_type, sort_order,
+                budgeted_material, budgeted_labor_hrs, budgeted_labor_cost, budgeted_total,
+                status, source)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'location_task', ?, ?, ?, ?, ?, 'not_started', 'smartplans')
+            `).bind(
+              locTaskId, id, phaseId, linkedLocId,
+              locTask.code || `${phase.code}.${locSortIdx}`,
+              locTask.name || `${locTask.location_name || 'Location'} — ${phase.name}`,
+              locTask.description || '',
+              locTask.phase || phase.phase || '',
+              wbsSortOrder,
+              locTask.budgeted_material || 0,
+              locTask.budgeted_labor_hrs || 0,
+              locLaborCost,
+              locTotal,
+            ).run();
+
+            // Import individual tasks under each location-phase
+            if (locTask.children && Array.isArray(locTask.children)) {
+              let taskSortIdx = 0;
+              for (const task of locTask.children) {
+                const taskId = crypto.randomUUID().replace(/-/g, '');
+                taskSortIdx++;
+                wbsSortOrder++;
+                const taskLaborCost = (task.budgeted_labor_hrs || 0) * avgRate;
+                const taskTotal = (task.budgeted_material || 0) + taskLaborCost;
+
+                await env.DB.prepare(`
+                  INSERT INTO wbs_tasks (id, project_id, parent_id, location_id, wbs_code, title,
+                    phase, task_type, sort_order,
+                    budgeted_material, budgeted_labor_hrs, budgeted_labor_cost, budgeted_total,
+                    status, source)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, 'task', ?, ?, ?, ?, ?, 'not_started', 'smartplans')
+                `).bind(
+                  taskId, id, locTaskId, linkedLocId,
+                  task.code || `${locTask.code}.${taskSortIdx}`,
+                  task.name || `Task ${taskSortIdx}`,
+                  task.phase || locTask.phase || '',
+                  wbsSortOrder,
+                  task.budgeted_material || 0,
+                  task.budgeted_labor_hrs || 0,
+                  taskLaborCost,
+                  taskTotal,
+                ).run();
+              }
+            }
+          }
+        }
+      }
+    }
+
     // Log activity
     await env.DB.prepare(
       `INSERT INTO activity_log (project_id, user_id, action, entity_type, entity_id, description)

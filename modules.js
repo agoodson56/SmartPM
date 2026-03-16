@@ -3,6 +3,274 @@
 // Full UI for all project management modules
 // ═══════════════════════════════════════════════════════════════
 
+// ─── WBS (Work Breakdown Structure) ────────────────────────────
+// Auto-generated from SmartPlans bid — PM tracks progress by location/phase
+App.renderWBS = async function (c) {
+  const canBudget = this.Permissions.can('canEditInfraBudget');
+  const canEdit = this.Permissions.can('canEditMaterialLabor');
+  c.innerHTML = `<div class="page-header"><div><h1 class="page-title">📐 Work Breakdown Structure</h1><p class="page-subtitle">Track every phase, location, and task from the original bid</p></div><div class="page-actions">${canBudget ? '<button class="btn btn-primary" id="btn-add-wbs">+ Add Task</button>' : ''}</div></div><div id="wbs-totals" class="metric-grid" style="margin-bottom:20px;"></div><div id="wbs-filter" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;"></div><div id="wbs-content"><div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-title">Loading WBS...</div></div></div>`;
+  const pid = this.state.projectId;
+  const res = await API.getWBS(pid);
+  if (res.error) { this.toast(res.error, 'error'); return; }
+  const tasks = res.tasks || [];
+  const t = res.totals || {};
+
+  // Render totals with traffic lights
+  const overH = t.overall_health || 'green';
+  const matH = t.material_health || 'green';
+  const labH = t.labor_health || 'green';
+  const overProg = t.overall_progress || 0;
+  document.getElementById('wbs-totals').innerHTML = `
+    <div class="metric-card ${healthCardClass(overH)}"><div class="metric-icon">${trafficLight(overH)}</div><div class="metric-value" style="font-size:22px;">${overH === 'green' ? 'ON TRACK' : overH === 'yellow' ? 'CAUTION' : 'OVER BUDGET'}</div><div class="metric-label">Project Health</div></div>
+    <div class="metric-card metric-card--sky"><div class="metric-icon">📐</div><div class="metric-value">${t.total_tasks || 0}</div><div class="metric-label">Total WBS Tasks</div></div>
+    <div class="metric-card metric-card--indigo"><div class="metric-icon">📊</div><div class="metric-value">${overProg.toFixed(1)}%</div><div class="metric-label">Overall Progress</div></div>
+    <div class="metric-card ${healthCardClass(matH)}"><div class="metric-icon">${trafficLight(matH)}</div><div class="metric-value">$${formatMoney(t.actual_material)} / $${formatMoney(t.budgeted_material)}</div><div class="metric-label">Material Budget 🔒</div></div>
+    <div class="metric-card ${healthCardClass(labH)}"><div class="metric-icon">${trafficLight(labH)}</div><div class="metric-value">${(t.actual_labor_hrs || 0).toFixed(1)} / ${(t.budgeted_labor_hrs || 0).toFixed(1)} hrs</div><div class="metric-label">Labor Budget 🔒</div></div>
+    <div class="metric-card metric-card--emerald"><div class="metric-icon">✅</div><div class="metric-value">${t.complete || 0} / ${t.total_tasks || 0}</div><div class="metric-label">Tasks Complete</div></div>`;
+
+  // Overall progress bar
+  const progBar = document.createElement('div');
+  progBar.innerHTML = `<div class="progress-bar" style="margin-bottom:20px;height:10px;"><div class="progress-fill" style="width:${Math.min(overProg, 100)}%;${overH === 'red' ? 'background:var(--error)' : overH === 'yellow' ? 'background:var(--warning)' : ''}"></div></div>`;
+  document.getElementById('wbs-totals').after(progBar);
+
+  // Filter buttons
+  document.getElementById('wbs-filter').innerHTML = `
+    <button class="btn btn-sm wbs-filter-btn active" data-filter="all">All Phases</button>
+    <button class="btn btn-sm wbs-filter-btn" data-filter="rough-in">Rough-In</button>
+    <button class="btn btn-sm wbs-filter-btn" data-filter="trim-out">Trim-Out</button>
+    <button class="btn btn-sm wbs-filter-btn" data-filter="termination">Term & Test</button>
+    <button class="btn btn-sm wbs-filter-btn" data-filter="closeout">Closeout</button>
+    <span style="flex:1;"></span>
+    <span style="font-size:12px;color:var(--text-muted);align-self:center;">${t.not_started || 0} not started · ${t.in_progress || 0} in progress · ${t.complete || 0} complete</span>`;
+
+  const content = document.getElementById('wbs-content');
+  if (tasks.length === 0) {
+    content.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📐</div><div class="empty-state-title">No WBS Tasks</div><div class="empty-state-desc">${canBudget ? 'Add tasks manually or import a SmartPlans estimate to auto-generate a WBS.' : 'WBS is auto-generated when a SmartPlans estimate is imported by an Admin/Ops Mgr.'}</div></div>`;
+  } else {
+    content.innerHTML = tasks.map(phase => this._renderWBSPhase(phase, canEdit, canBudget)).join('');
+  }
+
+  // Phase filter logic
+  document.querySelectorAll('.wbs-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.wbs-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const filter = btn.dataset.filter;
+      document.querySelectorAll('.wbs-phase-card').forEach(card => {
+        if (filter === 'all') { card.style.display = ''; }
+        else { card.style.display = card.dataset.phase && card.dataset.phase.includes(filter.replace('-', '_')) ? '' : 'none'; }
+      });
+    });
+  });
+
+  // Expand/collapse logic
+  document.querySelectorAll('.wbs-toggle').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const target = document.getElementById(btn.dataset.target);
+      if (target) {
+        const isHidden = target.style.display === 'none';
+        target.style.display = isHidden ? '' : 'none';
+        btn.textContent = isHidden ? '▼' : '▶';
+      }
+    });
+  });
+
+  // Add task button
+  const addBtn = document.getElementById('btn-add-wbs');
+  if (addBtn) addBtn.addEventListener('click', () => this.addWBSTask());
+};
+
+App._renderWBSPhase = function (phase, canEdit, canBudget) {
+  const s = phase;
+  const pPct = s.progress_pct || 0;
+  const statClass = s.status === 'complete' ? 'active' : s.status === 'in_progress' ? 'amber' : 'draft';
+  const matUsed = s.budgeted_material > 0 ? ((s.actual_material / s.budgeted_material) * 100).toFixed(0) : 0;
+  const labUsed = s.budgeted_labor_hrs > 0 ? ((s.actual_labor_hrs / s.budgeted_labor_hrs) * 100).toFixed(0) : 0;
+
+  const phaseMatH = localHealth(s.actual_material, s.budgeted_material);
+  const phaseLabH = localHealth(s.actual_labor_hrs, s.budgeted_labor_hrs);
+  const phaseH = phaseMatH === 'red' || phaseLabH === 'red' ? 'red' : phaseMatH === 'yellow' || phaseLabH === 'yellow' ? 'yellow' : 'green';
+
+  let html = `<div class="card wbs-phase-card" data-phase="${esc(s.phase || '')}" style="margin-bottom:16px;border-left:4px solid ${healthColor(phaseH)};">`;
+  html += `<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="document.querySelector('[data-target=\\'wbs-children-${s.id}\\']').click()">`;
+  html += `<div style="display:flex;align-items:center;gap:10px;">`;
+  html += `<button class="wbs-toggle" data-target="wbs-children-${s.id}" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--text-secondary);padding:4px;">▼</button>`;
+  html += `<span style="font-size:18px;">${trafficLight(phaseH)}</span>`;
+  html += `<div><div style="font-weight:700;font-size:16px;">${esc(s.wbs_code)}. ${esc(s.title)}</div>`;
+  html += `<div style="font-size:12px;color:var(--text-muted);">${esc(s.description || '')} · ${(s.children || []).length} locations</div></div>`;
+  html += `</div>`;
+  html += `<div style="display:flex;align-items:center;gap:12px;">`;
+  html += `<div style="text-align:right;"><div style="font-size:20px;font-weight:700;">${pPct.toFixed(0)}%</div><div class="progress-bar" style="height:6px;width:80px;"><div class="progress-fill" style="width:${Math.min(pPct, 100)}%;${progressColor(phaseH)}"></div></div></div>`;
+  html += `<span class="badge badge--${statClass}">${formatStatus(s.status)}</span>`;
+  html += `</div></div>`;
+
+  // Phase budget summary row
+  html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;font-size:12px;margin:12px 0 8px 32px;">`;
+  html += `<div><div style="color:var(--text-muted);">Material ${trafficLight(phaseMatH)} 🔒</div><div style="font-weight:600;color:${healthColor(phaseMatH)}">$${formatMoney(s.actual_material)} / $${formatMoney(s.budgeted_material)} (${matUsed}%)</div></div>`;
+  html += `<div><div style="color:var(--text-muted);">Labor ${trafficLight(phaseLabH)} 🔒</div><div style="font-weight:600;color:${healthColor(phaseLabH)}">${(s.actual_labor_hrs || 0).toFixed(1)} / ${(s.budgeted_labor_hrs || 0).toFixed(1)} hrs (${labUsed}%)</div></div>`;
+  html += `<div><div style="color:var(--text-muted);">Budget Total 🔒</div><div style="font-weight:600;">$${formatMoney(s.budgeted_total)}</div></div>`;
+  html += `<div><div style="color:var(--text-muted);">Actual Spend</div><div style="font-weight:600;color:${healthColor(phaseH)}">$${formatMoney(s.actual_total)}</div></div>`;
+  html += `</div>`;
+
+  // Children (location tasks)
+  html += `<div id="wbs-children-${s.id}" style="margin-left:16px;">`;
+  if (s.children && s.children.length > 0) {
+    html += `<table class="data-table" style="margin-top:8px;"><thead><tr>`;
+    html += `<th style="width:30px;"></th><th>WBS</th><th>Task</th><th style="text-align:right;">Material 🔒</th><th style="text-align:right;">Labor 🔒</th><th style="text-align:right;">Progress</th><th>Status</th>`;
+    if (canEdit) html += `<th></th>`;
+    html += `</tr></thead><tbody>`;
+
+    for (const locTask of s.children) {
+      const ltH = localHealth(locTask.actual_material, locTask.budgeted_material);
+      const ltLabH = localHealth(locTask.actual_labor_hrs, locTask.budgeted_labor_hrs);
+      const ltOverH = ltH === 'red' || ltLabH === 'red' ? 'red' : ltH === 'yellow' || ltLabH === 'yellow' ? 'yellow' : 'green';
+      const ltPct = locTask.progress_pct || 0;
+
+      // Location task row (expandable)
+      html += `<tr style="background:var(--bg-hover);cursor:pointer;" onclick="document.querySelector('[data-target=\\'wbs-sub-${locTask.id}\\']')?.click()">`;
+      html += `<td><button class="wbs-toggle" data-target="wbs-sub-${locTask.id}" style="background:none;border:none;font-size:12px;cursor:pointer;color:var(--text-secondary);padding:2px;">${locTask.children && locTask.children.length > 0 ? '▼' : '·'}</button></td>`;
+      html += `<td style="font-weight:600;">${esc(locTask.wbs_code)}</td>`;
+      html += `<td><div style="font-weight:600;">${trafficLight(ltOverH)} ${esc(locTask.title)}</div></td>`;
+      html += `<td style="text-align:right;color:${healthColor(ltH)}">${trafficLight(ltH)} $${formatMoney(locTask.actual_material)} / $${formatMoney(locTask.budgeted_material)}</td>`;
+      html += `<td style="text-align:right;color:${healthColor(ltLabH)}">${trafficLight(ltLabH)} ${(locTask.actual_labor_hrs || 0).toFixed(1)} / ${(locTask.budgeted_labor_hrs || 0).toFixed(1)} hrs</td>`;
+      html += `<td style="text-align:right;"><div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;"><div class="progress-bar" style="height:5px;width:60px;"><div class="progress-fill" style="width:${Math.min(ltPct, 100)}%;${progressColor(ltOverH)}"></div></div><span style="font-weight:600;font-size:12px;">${ltPct.toFixed(0)}%</span></div></td>`;
+      html += `<td><span class="badge badge--${locTask.status === 'complete' ? 'active' : locTask.status === 'in_progress' ? 'amber' : 'draft'}">${formatStatus(locTask.status)}</span></td>`;
+      if (canEdit) html += `<td><button class="btn-icon" onclick="event.stopPropagation(); App.editWBSTask('${locTask.id}')">✏️</button></td>`;
+      html += `</tr>`;
+
+      // Sub-tasks (leaf tasks)
+      if (locTask.children && locTask.children.length > 0) {
+        html += `<tr id="wbs-sub-${locTask.id}"><td colspan="${canEdit ? 8 : 7}" style="padding:0;">`;
+        html += `<table class="data-table" style="margin:0;border:none;"><tbody>`;
+        for (const task of locTask.children) {
+          const tH = localHealth(task.actual_material, task.budgeted_material);
+          const tPct = task.progress_pct || 0;
+          html += `<tr>`;
+          html += `<td style="width:30px;padding-left:40px;"></td>`;
+          html += `<td style="font-size:12px;color:var(--text-muted);">${esc(task.wbs_code)}</td>`;
+          html += `<td style="font-size:13px;">${esc(task.title)}</td>`;
+          html += `<td style="text-align:right;font-size:12px;">$${formatMoney(task.budgeted_material)}</td>`;
+          html += `<td style="text-align:right;font-size:12px;">${(task.budgeted_labor_hrs || 0).toFixed(1)} hrs</td>`;
+          html += `<td style="text-align:right;"><div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;"><div class="progress-bar" style="height:4px;width:50px;"><div class="progress-fill" style="width:${Math.min(tPct, 100)}%"></div></div><span style="font-size:11px;">${tPct.toFixed(0)}%</span></div></td>`;
+          html += `<td><span class="badge badge--${task.status === 'complete' ? 'active' : task.status === 'in_progress' ? 'amber' : 'draft'}" style="font-size:10px;">${formatStatus(task.status)}</span></td>`;
+          if (canEdit) html += `<td><button class="btn-icon" onclick="event.stopPropagation(); App.editWBSTask('${task.id}')" style="font-size:12px;">✏️</button></td>`;
+          html += `</tr>`;
+        }
+        html += `</tbody></table></td></tr>`;
+      }
+    }
+    html += `</tbody></table>`;
+  }
+  html += `</div></div>`;
+  return html;
+};
+
+// ── Edit WBS Task Modal ─────────────────────────────────────
+App.editWBSTask = async function (taskId) {
+  const pid = this.state.projectId;
+  const res = await API.getWBS(pid);
+  if (res.error) { this.toast(res.error, 'error'); return; }
+  const task = (res.flat || []).find(t => t.id === taskId);
+  if (!task) { this.toast('Task not found', 'error'); return; }
+  const canBudget = this.Permissions.can('canEditInfraBudget');
+
+  this.showModal(`Update Task: ${task.title}`, `<div class="form-grid">
+    <div class="form-group form-full"><label class="form-label">Task</label><div style="font-weight:600;padding:8px 0;">${esc(task.wbs_code)} — ${esc(task.title)}</div></div>
+    <div class="form-group form-full"><div style="padding:8px 12px;background:var(--bg-card);border-radius:6px;border:1px solid var(--border);font-size:12px;display:flex;gap:20px;flex-wrap:wrap;">
+      <span>🔒 Material Budget: <strong>$${formatMoney(task.budgeted_material)}</strong></span>
+      <span>🔒 Labor Budget: <strong>${(task.budgeted_labor_hrs || 0).toFixed(1)} hrs ($${formatMoney(task.budgeted_labor_cost)})</strong></span>
+      <span>🔒 Total Budget: <strong>$${formatMoney(task.budgeted_total)}</strong></span>
+    </div></div>
+    <div class="form-group"><label class="form-label">Progress %</label><div style="display:flex;align-items:center;gap:10px;"><input class="form-input" id="wt-pct" type="range" min="0" max="100" step="5" value="${task.progress_pct || 0}" style="flex:1;" oninput="document.getElementById('wt-pct-val').textContent=this.value+'%'"><span id="wt-pct-val" style="font-weight:700;min-width:40px;">${(task.progress_pct || 0).toFixed(0)}%</span></div></div>
+    <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="wt-status"><option value="not_started" ${task.status === 'not_started' ? 'selected' : ''}>Not Started</option><option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>In Progress</option><option value="on_hold" ${task.status === 'on_hold' ? 'selected' : ''}>On Hold</option><option value="complete" ${task.status === 'complete' ? 'selected' : ''}>Complete</option></select></div>
+    <div class="form-group"><label class="form-label">Actual Material ($)</label><input class="form-input" id="wt-amat" type="number" step="0.01" value="${task.actual_material || 0}"></div>
+    <div class="form-group"><label class="form-label">Actual Labor (hrs)</label><input class="form-input" id="wt-alhr" type="number" step="0.5" value="${task.actual_labor_hrs || 0}"></div>
+    <div class="form-group"><label class="form-label">Actual Start</label><input class="form-input" id="wt-astart" type="date" value="${task.actual_start || ''}"></div>
+    <div class="form-group"><label class="form-label">Actual End</label><input class="form-input" id="wt-aend" type="date" value="${task.actual_end || ''}"></div>
+    <div class="form-group"><label class="form-label">Assigned To</label><input class="form-input" id="wt-assign" value="${esc(task.assigned_to || '')}"></div>
+    <div class="form-group form-full"><label class="form-label">Notes</label><textarea class="form-input" id="wt-notes" rows="2">${esc(task.notes || '')}</textarea></div>
+  </div>`, async () => {
+    const pct = parseFloat(document.getElementById('wt-pct').value) || 0;
+    const status = document.getElementById('wt-status').value;
+    const actualMat = parseFloat(document.getElementById('wt-amat').value) || 0;
+    const actualLhr = parseFloat(document.getElementById('wt-alhr').value) || 0;
+
+    // Auto-calculate actual labor cost and total
+    const avgRate = 45; // default
+    const actualLabCost = actualLhr * avgRate;
+    const actualTotal = actualMat + actualLabCost;
+
+    const r = await API.updateWBSTask(pid, taskId, {
+      progress_pct: pct,
+      status: status,
+      actual_material: actualMat,
+      actual_labor_hrs: actualLhr,
+      actual_labor_cost: actualLabCost,
+      actual_total: actualTotal,
+      actual_start: document.getElementById('wt-astart').value || null,
+      actual_end: document.getElementById('wt-aend').value || null,
+      assigned_to: document.getElementById('wt-assign').value.trim(),
+      notes: document.getElementById('wt-notes').value,
+    });
+    if (r.error) { this.toast(r.error, 'error'); return; }
+    this.closeModal();
+    this.toast('Task updated — progress auto-rolls up to phase', 'success');
+    this.renderWBS(document.getElementById('project-content'));
+  });
+};
+
+// ── Add WBS Task (Admin) ────────────────────────────────────
+App.addWBSTask = async function () {
+  if (!this.Permissions.can('canEditInfraBudget')) { this.toast('Only Admin/Ops Mgr can add WBS tasks', 'warning'); return; }
+  const pid = this.state.projectId;
+
+  // Get phases for parent selection
+  const res = await API.getWBS(pid);
+  const phases = (res.tasks || []);
+  let parentOptions = '<option value="">Top Level (Phase)</option>';
+  for (const p of phases) {
+    parentOptions += `<option value="${p.id}">${esc(p.wbs_code)} — ${esc(p.title)}</option>`;
+    for (const lt of (p.children || [])) {
+      parentOptions += `<option value="${lt.id}">&nbsp;&nbsp;${esc(lt.wbs_code)} — ${esc(lt.title)}</option>`;
+    }
+  }
+
+  this.showModal('Add WBS Task', `<div class="form-grid">
+    <div class="form-group"><label class="form-label">Parent Task</label><select class="form-select" id="wn-parent">${parentOptions}</select></div>
+    <div class="form-group"><label class="form-label">WBS Code *</label><input class="form-input" id="wn-code" placeholder="e.g. 2.3.1"></div>
+    <div class="form-group form-full"><label class="form-label">Title *</label><input class="form-input" id="wn-title" placeholder="Task title"></div>
+    <div class="form-group"><label class="form-label">Task Type</label><select class="form-select" id="wn-type"><option value="phase">Phase</option><option value="location_task">Location Task</option><option value="task" selected>Task</option></select></div>
+    <div class="form-group"><label class="form-label">Phase</label><select class="form-select" id="wn-phase"><option value="rough-in">Rough-In</option><option value="trim-out">Trim-Out</option><option value="termination">Termination & Testing</option><option value="closeout">Closeout</option></select></div>
+    <div class="form-group"><label class="form-label">Budgeted Material ($)</label><input class="form-input" id="wn-bmat" type="number" step="0.01" value="0"></div>
+    <div class="form-group"><label class="form-label">Budgeted Labor (hrs)</label><input class="form-input" id="wn-blhr" type="number" step="0.5" value="0"></div>
+    <div class="form-group form-full"><label class="form-label">Description</label><textarea class="form-input" id="wn-desc" rows="2"></textarea></div>
+  </div>`, async () => {
+    const code = document.getElementById('wn-code').value.trim();
+    const title = document.getElementById('wn-title').value.trim();
+    if (!code || !title) { this.toast('WBS code and title required', 'warning'); return; }
+    const bMat = parseFloat(document.getElementById('wn-bmat').value) || 0;
+    const bLhr = parseFloat(document.getElementById('wn-blhr').value) || 0;
+    const r = await API.createWBSTask(pid, {
+      parent_id: document.getElementById('wn-parent').value || null,
+      wbs_code: code,
+      title: title,
+      description: document.getElementById('wn-desc').value,
+      task_type: document.getElementById('wn-type').value,
+      phase: document.getElementById('wn-phase').value,
+      budgeted_material: bMat,
+      budgeted_labor_hrs: bLhr,
+      budgeted_labor_cost: bLhr * 45,
+      budgeted_total: bMat + (bLhr * 45),
+    });
+    if (r.error) { this.toast(r.error, 'error'); return; }
+    this.closeModal();
+    this.toast('WBS task created', 'success');
+    this.renderWBS(document.getElementById('project-content'));
+  });
+};
+
+
 // ─── SOV (Schedule of Values) ──────────────────────────────────
 App.renderSOV = async function (c) {
     c.innerHTML = `<div class="page-header"><div><h1 class="page-title">📋 Schedule of Values</h1><p class="page-subtitle">AIA G703 line items for progress billing</p></div><div class="page-actions">${AIAssistant.renderAIButton('sov-validate', this.state.projectId)}<button class="btn btn-primary" id="btn-add-sov">+ Add Line Item</button></div></div><div id="sov-balance" class="metric-grid" style="margin-bottom:20px;"></div><div class="card"><table class="data-table" id="sov-table"><thead><tr><th>Item #</th><th>Description</th><th>Division</th><th style="text-align:right">Scheduled Value</th><th style="text-align:right">Material</th><th style="text-align:right">Labor</th><th style="text-align:right">% Complete</th><th>Actions</th></tr></thead><tbody id="sov-body"><tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">Loading...</td></tr></tbody></table></div>`;

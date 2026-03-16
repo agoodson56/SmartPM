@@ -293,6 +293,7 @@ const App = {
     const sub = this.state.subRoute || 'overview';
     const items = [
       { id: 'overview', icon: '📊', label: 'Overview' },
+      { id: 'wbs', icon: '📐', label: 'Work Breakdown' },
       { id: 'infrastructure', icon: '🏢', label: 'Infrastructure' },
       { id: 'sov', icon: '📋', label: 'Schedule of Values' },
       { id: 'billing', icon: '💰', label: 'Progress Billing' },
@@ -331,6 +332,7 @@ const App = {
     if (!container) return;
     switch (this.state.subRoute) {
       case 'overview': this.renderProjectOverview(container); break;
+      case 'wbs': this.renderWBS(container); break;
       case 'infrastructure': this.renderInfrastructure(container); break;
       case 'sov': this.renderSOV(container); break;
       case 'billing': this.renderBilling(container); break;
