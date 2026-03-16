@@ -44,7 +44,11 @@ const API = {
     return res;
   },
 
-  logout() {
+  async logout() {
+    // Invalidate the session on the server first
+    if (this.token) {
+      try { await this.request('POST', '/auth/logout'); } catch (e) { /* best-effort */ }
+    }
     this.token = null;
     this.user = null;
     localStorage.removeItem('pm_token');

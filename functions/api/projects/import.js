@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 // POST /api/projects/import — Import SmartPlans JSON export
+// Uses D1 batch() for atomic execution — all or nothing.
 // ═══════════════════════════════════════════════════════════════
 
 export async function onRequestPost(context) {
@@ -24,219 +25,223 @@ export async function onRequestPost(context) {
     const totals = analysis.totals || {};
     const contractValue = totals.grandTotal || totals.totalWithMarkup || 0;
 
-    // Create project
-    await env.DB.prepare(`
-      INSERT INTO projects (
-        id, name, status, type,
-        address, jurisdiction,
-        original_contract_value, current_contract_value,
-        disciplines, pricing_tier, regional_multiplier, prevailing_wage, work_shift,
-        markup_material, markup_labor, markup_equipment, markup_subcontractor,
-        labor_rates, burden_rate, include_burden,
-        notes, smartplans_import_id, created_by
-      ) VALUES (
-        ?, ?, 'active', ?,
-        ?, ?,
-        ?, ?,
-        ?, ?, ?, ?, ?,
-        ?, ?, ?, ?,
-        ?, ?, ?,
-        ?, ?, ?
-      )
-    `).bind(
-      id,
-      project.name || 'Imported Project',
-      project.type || null,
-      project.location || null,
-      project.jurisdiction || null,
-      contractValue,
-      contractValue,
-      project.disciplines ? JSON.stringify(project.disciplines) : null,
-      pricing.tier || 'mid',
-      pricing.regionMultiplier || 'national_average',
-      pricing.prevailingWage || '',
-      pricing.workShift || '',
-      pricing.markup?.material || 25,
-      pricing.markup?.labor || 30,
-      pricing.markup?.equipment || 15,
-      pricing.markup?.subcontractor || 10,
-      pricing.laborRates ? JSON.stringify(pricing.laborRates) : null,
-      pricing.burdenRate || 35,
-      pricing.includeBurden !== undefined ? (pricing.includeBurden ? 1 : 0) : 1,
-      `Imported from SmartPlans on ${new Date().toLocaleDateString()}`,
-      importId,
-      data.user.id,
-    ).run();
+    // ── Collect ALL statements into a batch for atomic execution ──
+    const statements = [];
 
-    // Import SOV line items from analysis sections
+    // 1. Create project
+    statements.push(
+      env.DB.prepare(`
+        INSERT INTO projects (
+          id, name, status, type,
+          address, jurisdiction,
+          original_contract_value, current_contract_value,
+          disciplines, pricing_tier, regional_multiplier, prevailing_wage, work_shift,
+          markup_material, markup_labor, markup_equipment, markup_subcontractor,
+          labor_rates, burden_rate, include_burden,
+          notes, smartplans_import_id, created_by
+        ) VALUES (
+          ?, ?, 'active', ?,
+          ?, ?,
+          ?, ?,
+          ?, ?, ?, ?, ?,
+          ?, ?, ?, ?,
+          ?, ?, ?,
+          ?, ?, ?
+        )
+      `).bind(
+        id,
+        project.name || 'Imported Project',
+        project.type || null,
+        project.location || null,
+        project.jurisdiction || null,
+        contractValue,
+        contractValue,
+        project.disciplines ? JSON.stringify(project.disciplines) : null,
+        pricing.tier || 'mid',
+        pricing.regionMultiplier || 'national_average',
+        pricing.prevailingWage || '',
+        pricing.workShift || '',
+        pricing.markup?.material || 25,
+        pricing.markup?.labor || 30,
+        pricing.markup?.equipment || 15,
+        pricing.markup?.subcontractor || 10,
+        pricing.laborRates ? JSON.stringify(pricing.laborRates) : null,
+        pricing.burdenRate || 35,
+        pricing.includeBurden !== undefined ? (pricing.includeBurden ? 1 : 0) : 1,
+        `Imported from SmartPlans on ${new Date().toLocaleDateString()}`,
+        importId,
+        data.user.id,
+      )
+    );
+
+    // 2. Import SOV line items from analysis sections
     if (analysis.sections && Array.isArray(analysis.sections)) {
       let sortOrder = 0;
       for (const section of analysis.sections) {
         const itemId = crypto.randomUUID().replace(/-/g, '');
         sortOrder++;
-        await env.DB.prepare(`
-          INSERT INTO sov_items (id, project_id, item_number, description, division, category,
-            scheduled_value, material_cost, labor_cost, equipment_cost, sub_cost, sort_order)
-          VALUES (?, ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?)
-        `).bind(
-          itemId, id,
-          section.itemNumber || `SP-${String(sortOrder).padStart(3, '0')}`,
-          section.description || section.name || 'Imported line item',
-          section.division || null,
-          section.category || 'material',
-          section.totalValue || section.scheduledValue || 0,
-          section.materialCost || 0,
-          section.laborCost || 0,
-          section.equipmentCost || 0,
-          section.subCost || 0,
-          sortOrder,
-        ).run();
+        statements.push(
+          env.DB.prepare(`
+            INSERT INTO sov_items (id, project_id, item_number, description, division, category,
+              scheduled_value, material_cost, labor_cost, equipment_cost, sub_cost, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?)
+          `).bind(
+            itemId, id,
+            section.itemNumber || `SP-${String(sortOrder).padStart(3, '0')}`,
+            section.description || section.name || 'Imported line item',
+            section.division || null,
+            section.category || 'material',
+            section.totalValue || section.scheduledValue || 0,
+            section.materialCost || 0,
+            section.laborCost || 0,
+            section.equipmentCost || 0,
+            section.subCost || 0,
+            sortOrder,
+          )
+        );
       }
     }
 
-    // Import RFIs
+    // 3. Import RFIs
     if (rfis.items && Array.isArray(rfis.items)) {
       let rfiNum = 0;
       for (const rfi of rfis.items) {
         if (!rfi.selected) continue;
         rfiNum++;
         const rfiId = crypto.randomUUID().replace(/-/g, '');
-        await env.DB.prepare(`
-          INSERT INTO rfis (id, project_id, rfi_number, subject, question, detail,
-            discipline, priority, source, smartplans_rfi_id, created_by)
-          VALUES (?, ?, ?, ?, ?, ?,
-            ?, ?, 'smartplans', ?, ?)
-        `).bind(
-          rfiId, id, rfiNum,
-          rfi.subject || rfi.title || `RFI ${rfiNum}`,
-          rfi.question || rfi.description || '',
-          rfi.detail || rfi.fullText || null,
-          rfi.discipline || null,
-          rfi.priority || 'normal',
-          rfi.id || null,
-          data.user.id,
-        ).run();
+        statements.push(
+          env.DB.prepare(`
+            INSERT INTO rfis (id, project_id, rfi_number, subject, question, detail,
+              discipline, priority, source, smartplans_rfi_id, created_by)
+            VALUES (?, ?, ?, ?, ?, ?,
+              ?, ?, 'smartplans', ?, ?)
+          `).bind(
+            rfiId, id, rfiNum,
+            rfi.subject || rfi.title || `RFI ${rfiNum}`,
+            rfi.question || rfi.description || '',
+            rfi.detail || rfi.fullText || null,
+            rfi.discipline || null,
+            rfi.priority || 'normal',
+            rfi.id || null,
+            data.user.id,
+          )
+        );
       }
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // Import Infrastructure (MDF/IDF locations) from AI analysis
-    // These are AI-calculated budgets — LOCKED from field manipulation
-    // PMs can only update installed/actual values, not budgets
-    // ═══════════════════════════════════════════════════════════
+    // 4. Import Infrastructure (MDF/IDF locations) from AI analysis
+    // Build location ID map for WBS linking (must generate IDs upfront)
     const infra = pkg.infrastructure || {};
+    const locationIdMap = {}; // name → generated ID
     if (infra.locations && Array.isArray(infra.locations) && infra.locations.length > 0) {
       let locSortOrder = 0;
       for (const loc of infra.locations) {
         const locId = crypto.randomUUID().replace(/-/g, '');
         locSortOrder++;
-        await env.DB.prepare(`
-          INSERT INTO locations (id, project_id, name, type, floor, room_number, building, description, sort_order)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          locId, id,
-          loc.name || 'Location ' + locSortOrder,
-          loc.type || 'idf',
-          loc.floor || null,
-          loc.room_number || null,
-          loc.building || null,
-          'AI-imported from SmartPlans analysis',
-          locSortOrder,
-        ).run();
+        const locName = loc.name || 'Location ' + locSortOrder;
+        locationIdMap[locName] = locId;
 
-        // Import equipment items with AI-set budgets (unit, unit_cost, budgeted_cost)
+        statements.push(
+          env.DB.prepare(`
+            INSERT INTO locations (id, project_id, name, type, floor, room_number, building, description, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            locId, id,
+            locName,
+            loc.type || 'idf',
+            loc.floor || null,
+            loc.room_number || null,
+            loc.building || null,
+            'AI-imported from SmartPlans analysis',
+            locSortOrder,
+          )
+        );
+
+        // Import equipment items
         if (loc.items && Array.isArray(loc.items)) {
           for (const item of loc.items) {
             const itemId = crypto.randomUUID().replace(/-/g, '');
             const unitCost = item.unit_cost || 0;
             const budgetedQty = item.budgeted_qty || 1;
             const budgetedCost = item.budgeted_cost || (budgetedQty * unitCost);
-            await env.DB.prepare(`
-              INSERT INTO location_items (id, location_id, project_id, category, item_name, unit,
-                budgeted_qty, budgeted_cost, unit_cost, status)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'planned')
-            `).bind(
-              itemId, locId, id,
-              item.category || 'other',
-              item.item_name || 'Unknown Item',
-              item.unit || 'ea',
-              budgetedQty,
-              budgetedCost,
-              unitCost,
-            ).run();
+            statements.push(
+              env.DB.prepare(`
+                INSERT INTO location_items (id, location_id, project_id, category, item_name, unit,
+                  budgeted_qty, budgeted_cost, unit_cost, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'planned')
+              `).bind(
+                itemId, locId, id,
+                item.category || 'other',
+                item.item_name || 'Unknown Item',
+                item.unit || 'ea',
+                budgetedQty,
+                budgetedCost,
+                unitCost,
+              )
+            );
           }
         }
 
-        // Import cable runs with AI-set budgets
+        // Import cable runs
         if (loc.cable_runs && Array.isArray(loc.cable_runs)) {
           for (const run of loc.cable_runs) {
             const runId = crypto.randomUUID().replace(/-/g, '');
-            await env.DB.prepare(`
-              INSERT INTO cable_runs (id, source_location_id, project_id, cable_type,
-                destination, budgeted_qty, status)
-              VALUES (?, ?, ?, ?, ?, ?, 'planned')
-            `).bind(
-              runId, locId, id,
-              run.cable_type || 'cat6a',
-              run.destination || loc.name + ' drops',
-              run.budgeted_qty || 0,
-            ).run();
+            statements.push(
+              env.DB.prepare(`
+                INSERT INTO cable_runs (id, source_location_id, project_id, cable_type,
+                  destination, budgeted_qty, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'planned')
+              `).bind(
+                runId, locId, id,
+                run.cable_type || 'cat6a',
+                run.destination || locName + ' drops',
+                run.budgeted_qty || 0,
+              )
+            );
           }
         }
       }
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // Import Work Breakdown Structure (WBS) — auto-generated from bid
-    // Creates hierarchical tasks: Phase → Location → Task
-    // Links to infrastructure locations for material/labor tracking
-    // ═══════════════════════════════════════════════════════════
+    // 5. Import Work Breakdown Structure (WBS)
     const wbs = pkg.workBreakdown || {};
     if (wbs.phases && Array.isArray(wbs.phases) && wbs.phases.length > 0) {
-      // Build a lookup map from location names to their location IDs
-      const locationNameMap = {};
-      if (infra.locations && Array.isArray(infra.locations)) {
-        const locRows = await env.DB.prepare(
-          `SELECT id, name FROM locations WHERE project_id = ?`
-        ).bind(id).all();
-        for (const row of (locRows.results || [])) {
-          locationNameMap[row.name] = row.id;
-        }
-      }
+      // Calculate average labor rate for cost estimates
+      const avgRate = pricing.laborRates
+        ? Object.values(typeof pricing.laborRates === 'string' ? JSON.parse(pricing.laborRates) : pricing.laborRates).reduce((s, v) => s + (typeof v === 'number' ? v : 0), 0) / Math.max(Object.keys(typeof pricing.laborRates === 'string' ? JSON.parse(pricing.laborRates) : pricing.laborRates).length, 1)
+        : 45;
 
       let wbsSortOrder = 0;
       for (const phase of wbs.phases) {
         const phaseId = crypto.randomUUID().replace(/-/g, '');
         wbsSortOrder++;
-        
-        // Calculate phase-level labor cost estimate using avg rate
-        const avgRate = pricing.laborRates
-          ? Object.values(typeof pricing.laborRates === 'string' ? JSON.parse(pricing.laborRates) : pricing.laborRates).reduce((s, v) => s + (typeof v === 'number' ? v : 0), 0) / Math.max(Object.keys(typeof pricing.laborRates === 'string' ? JSON.parse(pricing.laborRates) : pricing.laborRates).length, 1)
-          : 45;
+
         const phaseLaborCost = (phase.budgeted_labor_hrs || 0) * avgRate;
         const phaseTotal = (phase.budgeted_material || 0) + phaseLaborCost;
 
-        await env.DB.prepare(`
-          INSERT INTO wbs_tasks (id, project_id, parent_id, wbs_code, title, description,
-            phase, task_type, sort_order,
-            budgeted_material, budgeted_labor_hrs, budgeted_labor_cost, budgeted_total,
-            status, source)
-          VALUES (?, ?, NULL, ?, ?, ?, ?, 'phase', ?, ?, ?, ?, ?, 'not_started', 'smartplans')
-        `).bind(
-          phaseId, id,
-          phase.code || String(wbsSortOrder),
-          phase.name || `Phase ${wbsSortOrder}`,
-          phase.description || '',
-          phase.phase || '',
-          wbsSortOrder,
-          phase.budgeted_material || 0,
-          phase.budgeted_labor_hrs || 0,
-          phaseLaborCost,
-          phaseTotal,
-        ).run();
+        statements.push(
+          env.DB.prepare(`
+            INSERT INTO wbs_tasks (id, project_id, parent_id, wbs_code, title, description,
+              phase, task_type, sort_order,
+              budgeted_material, budgeted_labor_hrs, budgeted_labor_cost, budgeted_total,
+              status, source)
+            VALUES (?, ?, NULL, ?, ?, ?, ?, 'phase', ?, ?, ?, ?, ?, 'not_started', 'smartplans')
+          `).bind(
+            phaseId, id,
+            phase.code || String(wbsSortOrder),
+            phase.name || `Phase ${wbsSortOrder}`,
+            phase.description || '',
+            phase.phase || '',
+            wbsSortOrder,
+            phase.budgeted_material || 0,
+            phase.budgeted_labor_hrs || 0,
+            phaseLaborCost,
+            phaseTotal,
+          )
+        );
 
-        // Import location-level tasks under this phase
+        // Location-level tasks under this phase
         if (phase.children && Array.isArray(phase.children)) {
           let locSortIdx = 0;
           for (const locTask of phase.children) {
@@ -244,31 +249,32 @@ export async function onRequestPost(context) {
             locSortIdx++;
             wbsSortOrder++;
 
-            // Try to link to infrastructure location
-            const linkedLocId = locTask.location_name ? (locationNameMap[locTask.location_name] || null) : null;
+            const linkedLocId = locTask.location_name ? (locationIdMap[locTask.location_name] || null) : null;
             const locLaborCost = (locTask.budgeted_labor_hrs || 0) * avgRate;
             const locTotal = (locTask.budgeted_material || 0) + locLaborCost;
 
-            await env.DB.prepare(`
-              INSERT INTO wbs_tasks (id, project_id, parent_id, location_id, wbs_code, title, description,
-                phase, task_type, sort_order,
-                budgeted_material, budgeted_labor_hrs, budgeted_labor_cost, budgeted_total,
-                status, source)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'location_task', ?, ?, ?, ?, ?, 'not_started', 'smartplans')
-            `).bind(
-              locTaskId, id, phaseId, linkedLocId,
-              locTask.code || `${phase.code}.${locSortIdx}`,
-              locTask.name || `${locTask.location_name || 'Location'} — ${phase.name}`,
-              locTask.description || '',
-              locTask.phase || phase.phase || '',
-              wbsSortOrder,
-              locTask.budgeted_material || 0,
-              locTask.budgeted_labor_hrs || 0,
-              locLaborCost,
-              locTotal,
-            ).run();
+            statements.push(
+              env.DB.prepare(`
+                INSERT INTO wbs_tasks (id, project_id, parent_id, location_id, wbs_code, title, description,
+                  phase, task_type, sort_order,
+                  budgeted_material, budgeted_labor_hrs, budgeted_labor_cost, budgeted_total,
+                  status, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'location_task', ?, ?, ?, ?, ?, 'not_started', 'smartplans')
+              `).bind(
+                locTaskId, id, phaseId, linkedLocId,
+                locTask.code || `${phase.code}.${locSortIdx}`,
+                locTask.name || `${locTask.location_name || 'Location'} — ${phase.name}`,
+                locTask.description || '',
+                locTask.phase || phase.phase || '',
+                wbsSortOrder,
+                locTask.budgeted_material || 0,
+                locTask.budgeted_labor_hrs || 0,
+                locLaborCost,
+                locTotal,
+              )
+            );
 
-            // Import individual tasks under each location-phase
+            // Individual tasks under each location-phase
             if (locTask.children && Array.isArray(locTask.children)) {
               let taskSortIdx = 0;
               for (const task of locTask.children) {
@@ -278,23 +284,25 @@ export async function onRequestPost(context) {
                 const taskLaborCost = (task.budgeted_labor_hrs || 0) * avgRate;
                 const taskTotal = (task.budgeted_material || 0) + taskLaborCost;
 
-                await env.DB.prepare(`
-                  INSERT INTO wbs_tasks (id, project_id, parent_id, location_id, wbs_code, title,
-                    phase, task_type, sort_order,
-                    budgeted_material, budgeted_labor_hrs, budgeted_labor_cost, budgeted_total,
-                    status, source)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, 'task', ?, ?, ?, ?, ?, 'not_started', 'smartplans')
-                `).bind(
-                  taskId, id, locTaskId, linkedLocId,
-                  task.code || `${locTask.code}.${taskSortIdx}`,
-                  task.name || `Task ${taskSortIdx}`,
-                  task.phase || locTask.phase || '',
-                  wbsSortOrder,
-                  task.budgeted_material || 0,
-                  task.budgeted_labor_hrs || 0,
-                  taskLaborCost,
-                  taskTotal,
-                ).run();
+                statements.push(
+                  env.DB.prepare(`
+                    INSERT INTO wbs_tasks (id, project_id, parent_id, location_id, wbs_code, title,
+                      phase, task_type, sort_order,
+                      budgeted_material, budgeted_labor_hrs, budgeted_labor_cost, budgeted_total,
+                      status, source)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'task', ?, ?, ?, ?, ?, 'not_started', 'smartplans')
+                  `).bind(
+                    taskId, id, locTaskId, linkedLocId,
+                    task.code || `${locTask.code}.${taskSortIdx}`,
+                    task.name || `Task ${taskSortIdx}`,
+                    task.phase || locTask.phase || '',
+                    wbsSortOrder,
+                    task.budgeted_material || 0,
+                    task.budgeted_labor_hrs || 0,
+                    taskLaborCost,
+                    taskTotal,
+                  )
+                );
               }
             }
           }
@@ -302,11 +310,17 @@ export async function onRequestPost(context) {
       }
     }
 
-    // Log activity
-    await env.DB.prepare(
-      `INSERT INTO activity_log (project_id, user_id, action, entity_type, entity_id, description)
-       VALUES (?, ?, 'import', 'project', ?, ?)`
-    ).bind(id, data.user.id, id, `Imported from SmartPlans: ${project.name || 'Project'}`).run();
+    // 6. Activity log
+    statements.push(
+      env.DB.prepare(
+        `INSERT INTO activity_log (project_id, user_id, action, entity_type, entity_id, description)
+         VALUES (?, ?, 'import', 'project', ?, ?)`
+      ).bind(id, data.user.id, id, `Imported from SmartPlans: ${project.name || 'Project'}`)
+    );
+
+    // ── EXECUTE ALL STATEMENTS ATOMICALLY ──
+    // D1 batch() ensures all-or-nothing: if any statement fails, none are committed
+    await env.DB.batch(statements);
 
     return Response.json({ id, success: true }, { status: 201 });
   } catch (err) {

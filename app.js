@@ -250,7 +250,7 @@ const App = {
     this.updateMetrics();
   },
 
-  updateMetrics() {
+  async updateMetrics() {
     const p = this.state.projects;
     const active = p.filter(x => x.status === 'active' || x.status === 'punch_list');
     const tc = p.reduce((s, x) => s + (x.current_contract_value || 0), 0);
@@ -261,8 +261,14 @@ const App = {
     set('m-contract', '$' + formatMoney(tc));
     set('m-billed', '$' + formatMoney(tb));
     set('m-outstanding', '$' + formatMoney(tb - tp));
-    set('m-open-rfis', '—');
-    set('m-pending-cos', '—');
+    // Fetch real RFI/CO counts from dashboard API
+    try {
+      const dash = await API.getDashboard();
+      if (dash && !dash.error) {
+        set('m-open-rfis', (dash.rfis && dash.rfis.open) || 0);
+        set('m-pending-cos', (dash.changeOrders && dash.changeOrders.pending) || 0);
+      }
+    } catch (e) { /* non-critical — leave dashes if API fails */ }
   },
 
   renderProjectList() {
@@ -280,7 +286,7 @@ const App = {
           <span class="badge badge--${p.status}">${formatStatus(p.status)}</span>
         </div>
         ${p.client_name ? `<div class="project-card-client">${esc(p.client_name)}${p.gc_name ? ' · GC: ' + esc(p.gc_name) : ''}</div>` : ''}
-        ${p.disciplines ? `<div class="project-card-disciplines">${JSON.parse(p.disciplines || '[]').map(d => `<span class="discipline-tag">${esc(d)}</span>`).join('')}</div>` : ''}
+        ${p.disciplines ? `<div class="project-card-disciplines">${safeParse(p.disciplines || '[]').map(d => `<span class="discipline-tag">${esc(d)}</span>`).join('')}</div>` : ''}
         <div class="project-card-finance">
           <div class="project-card-stat"><div>Contract</div><div class="project-card-stat-value">$${formatMoney(p.current_contract_value || 0)}</div></div>
           <div class="project-card-stat"><div>Billed</div><div class="project-card-stat-value">$${formatMoney(p.total_billed || 0)}</div></div>
@@ -352,7 +358,7 @@ const App = {
   renderProjectOverview(container) {
     const p = this.state.currentProject;
     if (!p) return;
-    const disc = JSON.parse(p.disciplines || '[]');
+    const disc = safeParse(p.disciplines || '[]');
     const remaining = (p.current_contract_value || 0) - (p.total_billed || 0);
     const pct = p.current_contract_value ? ((p.total_billed / p.current_contract_value) * 100).toFixed(1) : 0;
     container.innerHTML = `
@@ -650,3 +656,6 @@ function formatDate(s) { if (!s) return '—'; const d = new Date(s); return isN
 function formatStatus(s) { return s ? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '—'; }
 
 document.addEventListener('DOMContentLoaded', () => App.init());
+
+// Safe JSON parser — prevents crashes from corrupted DB data
+function safeParse(str, fallback) { if (fallback === undefined) fallback = []; try { return JSON.parse(str); } catch (e) { return fallback; } }

@@ -426,8 +426,8 @@ CREATE INDEX IF NOT EXISTS idx_wbs_project ON wbs_tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_wbs_parent ON wbs_tasks(parent_id);
 CREATE INDEX IF NOT EXISTS idx_wbs_location ON wbs_tasks(location_id);
 
--- SEED: Default users with role-based access
--- Admin (password: SmartAdmin2026!) — Full access: edit all, manage passwords, delete completed projects
+-- SEED: Default users with role-based access (change all passwords after initial deployment)
+-- Admin — Full access: edit all, manage passwords, delete completed projects
 INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, role) VALUES (
   '00000000000000000000000000000001',
   'admin',
@@ -437,7 +437,7 @@ INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, r
   'admin'
 );
 
--- Ops Manager (password: SmartOps2026!) — Edit all project data, change PM password
+-- Ops Manager — Edit all project data, change PM password
 INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, role) VALUES (
   '00000000000000000000000000000002',
   'opsmgr',
@@ -447,7 +447,7 @@ INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, r
   'ops_mgr'
 );
 
--- Project Manager (password: SmartPM2026!) — Edit material used & labor used only
+-- Project Manager — Edit material used & labor used only
 INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, role) VALUES (
   '00000000000000000000000000000003',
   'pm',
@@ -457,7 +457,7 @@ INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, r
   'pm'
 );
 
--- 3D (password: Smart3D2026!) — View-only: can only view project stats
+-- 3D Viewer — View-only: can only view project stats
 INSERT OR IGNORE INTO users (id, username, password_hash, display_name, email, role) VALUES (
   '00000000000000000000000000000004',
   '3d',

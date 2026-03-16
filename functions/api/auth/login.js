@@ -26,6 +26,20 @@ export async function onRequestPost(context) {
             return Response.json({ error: 'Invalid username or password' }, { status: 401 });
         }
 
+        // ── Cleanup: delete expired sessions (prevents table bloat) ──
+        await env.DB.prepare(
+            `DELETE FROM sessions WHERE expires_at < datetime('now')`
+        ).run();
+
+        // ── Limit concurrent sessions: keep only last 4 per user ──
+        const existingSessions = await env.DB.prepare(
+            `SELECT token FROM sessions WHERE user_id = ? ORDER BY created_at DESC`
+        ).bind(user.id).all();
+        const stale = (existingSessions.results || []).slice(4);
+        for (const s of stale) {
+            await env.DB.prepare(`DELETE FROM sessions WHERE token = ?`).bind(s.token).run();
+        }
+
         // Create session token
         const tokenBytes = new Uint8Array(32);
         crypto.getRandomValues(tokenBytes);
