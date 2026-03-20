@@ -1,42 +1,53 @@
 /* ═══════════════════════════════════════════════════════════════
    SMARTPM — DESIGN SYSTEM
-   Dark premium theme matching SmartPlans/3D Dispatch ecosystem
+   3D Technology Services Corporate Theme — Fortune 500 Grade
+   White + Teal Green + Gold | www.3dtsi.com
    ═══════════════════════════════════════════════════════════════ */
 
-:root {
-  /* Background layers */
-  --bg-deepest: #0a0e14;
-  --bg-base: #0f1419;
-  --bg-raised: #151b23;
-  --bg-surface: #1a2130;
-  --bg-overlay: #1e2736;
-  --bg-hover: #242d3a;
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap');
 
-  /* Text */
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --text-muted: #6e7681;
-  --text-faint: #484f58;
+:root {
+  /* Background layers — Light / White */
+  --bg-deepest: #F8FAFB;
+  --bg-base: #FFFFFF;
+  --bg-raised: #FFFFFF;
+  --bg-surface: #F4F7F9;
+  --bg-overlay: #EEF2F5;
+  --bg-hover: rgba(13, 148, 136, 0.04);
+
+  /* Text — Dark / Black */
+  --text-primary: #1A1A2E;
+  --text-secondary: #4A5568;
+  --text-muted: #8896A6;
+  --text-faint: #B0BEC5;
 
   /* Borders */
-  --border-subtle: rgba(255, 255, 255, 0.04);
-  --border-light: rgba(255, 255, 255, 0.08);
-  --border-medium: rgba(255, 255, 255, 0.12);
-  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-subtle: rgba(0, 0, 0, 0.04);
+  --border-light: rgba(0, 0, 0, 0.08);
+  --border-medium: rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.18);
 
-  /* Accents */
-  --accent-sky: #38bdf8;
-  --accent-sky-dim: rgba(56, 189, 248, 0.15);
-  --accent-emerald: #10b981;
-  --accent-emerald-dim: rgba(16, 185, 129, 0.15);
-  --accent-amber: #f59e0b;
-  --accent-amber-dim: rgba(245, 158, 11, 0.15);
-  --accent-rose: #f43f5e;
-  --accent-rose-dim: rgba(244, 63, 94, 0.15);
-  --accent-indigo: #818cf8;
-  --accent-indigo-dim: rgba(129, 140, 248, 0.15);
-  --accent-violet: #a78bfa;
-  --accent-violet-dim: rgba(167, 139, 250, 0.15);
+  /* Accents — 3D Technology Services Brand */
+  --accent-teal: #0D9488;
+  --accent-teal-light: #14B8A6;
+  --accent-teal-dark: #0F766E;
+  --accent-teal-dim: rgba(13, 148, 136, 0.08);
+  --accent-gold: #D4A537;
+  --accent-gold-light: #F0C75E;
+  --accent-gold-dim: rgba(212, 165, 55, 0.10);
+
+  --accent-sky: #0D9488;
+  --accent-sky-dim: rgba(13, 148, 136, 0.08);
+  --accent-emerald: #059669;
+  --accent-emerald-dim: rgba(5, 150, 105, 0.08);
+  --accent-amber: #D4A537;
+  --accent-amber-dim: rgba(212, 165, 55, 0.08);
+  --accent-rose: #DC2626;
+  --accent-rose-dim: rgba(220, 38, 38, 0.06);
+  --accent-indigo: #0F766E;
+  --accent-indigo-dim: rgba(15, 118, 110, 0.08);
+  --accent-violet: #0D9488;
+  --accent-violet-dim: rgba(13, 148, 136, 0.06);
 
   /* Sizing */
   --radius-sm: 6px;
@@ -57,7 +68,7 @@
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg-deepest);
   color: var(--text-primary);
   line-height: 1.5;
@@ -76,12 +87,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.12);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -94,19 +105,17 @@ body {
   justify-content: center;
   min-height: 100vh;
   padding: 20px;
-  background: radial-gradient(ellipse at 30% 20%, rgba(56, 189, 248, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 80%, rgba(129, 140, 248, 0.04) 0%, transparent 50%),
-    var(--bg-deepest);
+  background: linear-gradient(160deg, #F8FAFB 0%, #EEFAF8 40%, #F8FAFB 100%);
 }
 
 .login-card {
   width: 100%;
   max-width: 400px;
   padding: 40px;
-  background: var(--bg-raised);
+  background: #FFFFFF;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--border-medium);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(13, 148, 136, 0.15);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(13, 148, 136, 0.05);
 }
 
 .login-logo {
@@ -122,9 +131,7 @@ body {
 .login-logo h1 {
   font-size: 22px;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--accent-sky), var(--accent-indigo));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
 }
 
 .login-logo p {
@@ -168,7 +175,7 @@ body {
 .login-btn {
   width: 100%;
   padding: 13px;
-  background: linear-gradient(135deg, var(--accent-sky), #2563eb);
+  background: linear-gradient(135deg, #14B8A6, #0D9488, #0F766E);
   border: none;
   border-radius: var(--radius-md);
   color: white;
@@ -181,7 +188,7 @@ body {
 
 .login-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 24px rgba(56, 189, 248, 0.25);
+  box-shadow: 0 6px 24px rgba(13, 148, 136, 0.25);
 }
 
 .login-btn:active {
@@ -215,15 +222,15 @@ body {
 
 .app-header {
   height: var(--header-height);
-  background: var(--bg-raised);
-  border-bottom: 1px solid var(--border-light);
+  background: #FFFFFF;
+  border-bottom: 2px solid rgba(13, 148, 136, 0.12);
   display: flex;
   align-items: center;
   padding: 0 20px;
   position: sticky;
   top: 0;
   z-index: 100;
-  backdrop-filter: blur(12px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .app-header-brand {
@@ -238,9 +245,8 @@ body {
 }
 
 .app-header-brand span {
-  background: linear-gradient(135deg, var(--accent-sky), var(--accent-indigo));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #0D9488;
+  font-weight: 800;
 }
 
 .app-header-nav {
@@ -296,7 +302,7 @@ body {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-sky), var(--accent-indigo));
+  background: linear-gradient(135deg, #14B8A6, #0D9488);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -460,14 +466,14 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-sky), #2563eb);
+  background: linear-gradient(135deg, #14B8A6, #0D9488, #0F766E);
   color: white;
   border: none;
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(56, 189, 248, 0.3);
+  box-shadow: 0 4px 16px rgba(13, 148, 136, 0.3);
 }
 
 .btn-secondary {
@@ -492,13 +498,13 @@ body {
 }
 
 .btn-danger {
-  background: rgba(244, 63, 94, 0.1);
+  background: rgba(220, 38, 38, 0.06);
   color: var(--accent-rose);
-  border-color: rgba(244, 63, 94, 0.3);
+  border-color: rgba(220, 38, 38, 0.2);
 }
 
 .btn-danger:hover {
-  background: rgba(244, 63, 94, 0.2);
+  background: rgba(220, 38, 38, 0.12);
 }
 
 .btn-sm {
