@@ -603,6 +603,18 @@ const App = {
       if (!data._meta || data._meta.format !== 'smartplans-export') {
         this.toast('Invalid file — not a SmartPlans export', 'error'); return;
       }
+
+      // Extract financial stats for preview
+      const fin = data.financials || {};
+      const catCount = fin.categories ? fin.categories.length : 0;
+      const lineItemCount = fin.totalLineItems || 0;
+      const grandTotal = fin.grandTotal || 0;
+      const infraLocs = data.infrastructure?.locations?.length || 0;
+      const wbsPhases = data.workBreakdown?.phases?.length || 0;
+      const rfiSelected = data.rfis?.selected || 0;
+      const rfiTotal = data.rfis?.total || 0;
+      const fmtDollar = (v) => '$' + (v || 0).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+
       const preview = document.getElementById('import-preview');
       if (preview) {
         preview.style.display = 'block';
@@ -615,19 +627,38 @@ const App = {
               <tr><td style="color:var(--text-muted);padding:4px 0;">Location</td><td style="padding:4px 0;">${esc(data.project?.location || '—')}</td></tr>
               <tr><td style="color:var(--text-muted);padding:4px 0;">Disciplines</td><td style="padding:4px 0;">${(data.project?.disciplines || []).join(', ')}</td></tr>
               <tr><td style="color:var(--text-muted);padding:4px 0;">Pricing Tier</td><td style="padding:4px 0;">${(data.pricingConfig?.tier || 'mid').toUpperCase()}</td></tr>
-              <tr><td style="color:var(--text-muted);padding:4px 0;">RFIs</td><td style="padding:4px 0;">${data.rfis?.selected || 0} selected of ${data.rfis?.total || 0}</td></tr>
             </table>
+            ${grandTotal > 0 || catCount > 0 || infraLocs > 0 || wbsPhases > 0 ? `
+            <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.07);">
+              <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:var(--text-primary);">📊 What will be imported:</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                ${grandTotal > 0 ? `<div style="padding:10px;border-radius:8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);"><div style="font-size:18px;font-weight:700;color:#10b981;">${fmtDollar(grandTotal)}</div><div style="font-size:11px;color:var(--text-muted);">Contract Value</div></div>` : ''}
+                ${catCount > 0 ? `<div style="padding:10px;border-radius:8px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);"><div style="font-size:18px;font-weight:700;color:#3b82f6;">${catCount}</div><div style="font-size:11px;color:var(--text-muted);">SOV Categories (${lineItemCount} items)</div></div>` : ''}
+                ${infraLocs > 0 ? `<div style="padding:10px;border-radius:8px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);"><div style="font-size:18px;font-weight:700;color:#a855f7;">${infraLocs}</div><div style="font-size:11px;color:var(--text-muted);">MDF/IDF Locations</div></div>` : ''}
+                ${wbsPhases > 0 ? `<div style="padding:10px;border-radius:8px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);"><div style="font-size:18px;font-weight:700;color:#f59e0b;">${wbsPhases}</div><div style="font-size:11px;color:var(--text-muted);">WBS Phases</div></div>` : ''}
+              </div>
+              ${rfiSelected > 0 ? `<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">+ ${rfiSelected} RFIs selected of ${rfiTotal} total</div>` : ''}
+            </div>` : ''}
             <button class="btn btn-success" style="width:100%;margin-top:16px;" id="confirm-import">✓ Import Project</button>
           </div>`;
         document.getElementById('confirm-import').addEventListener('click', async () => {
+          const btn = document.getElementById('confirm-import');
+          if (btn) { btn.disabled = true; btn.textContent = '⏳ Importing...'; }
           const res = await API.importSmartPlans(data);
-          if (res.error) { this.toast(res.error, 'error'); return; }
+          if (res.error) { this.toast(res.error, 'error'); if (btn) { btn.disabled = false; btn.textContent = '✓ Import Project'; } return; }
           this.closeModal();
-          this.toast('Project imported from SmartPlans!', 'success');
+          const stats = res.stats || {};
+          const parts = [];
+          if (stats.contractValue) parts.push(fmtDollar(stats.contractValue) + ' contract');
+          if (stats.sovItems) parts.push(stats.sovItems + ' SOV items');
+          if (stats.infrastructure) parts.push(stats.infrastructure + ' locations');
+          if (stats.wbsPhases) parts.push(stats.wbsPhases + ' WBS phases');
+          if (stats.rfis) parts.push(stats.rfis + ' RFIs');
+          this.toast(`Project imported! ${parts.join(', ')}`, 'success');
           this.navigate(`project/${res.id}/overview`);
         });
       }
-    } catch (err) { this.toast('Failed to parse JSON file', 'error'); }
+    } catch (err) { this.toast('Failed to parse JSON file: ' + err.message, 'error'); }
   },
 
   showModal(title, bodyHtml, onSave) {

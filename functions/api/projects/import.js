@@ -1,7 +1,144 @@
 // ═══════════════════════════════════════════════════════════════
 // POST /api/projects/import — Import SmartPlans JSON export
 // Uses D1 batch() for atomic execution — all or nothing.
+//
+// SmartPlans export format:
+//   analysis.rawMarkdown  — full AI analysis text
+//   analysis.sections     — OBJECT keyed by slug { title, content }
+//   pricingConfig         — { tier, regionalMultiplier, markup, laborRates, ... }
+//   infrastructure        — { locations: [...] }
+//   workBreakdown         — { phases: [...] }
+//   rfis                  — { items: [{ id, question, detail, selected }] }
+//
+// This import parses the rawMarkdown to extract financial line items
+// for SOV population, and maps field names to the SmartPlans format.
 // ═══════════════════════════════════════════════════════════════
+
+// ── BOM Table Parser — extracts pricing tables from AI markdown ──
+function extractBOMFromMarkdown(markdown) {
+  if (!markdown) return { categories: [], grandTotal: 0 };
+  const categories = [];
+  let currentCategory = null;
+  const lines = markdown.split('\n');
+  let inTable = false;
+  let headersParsed = false;
+  let colMap = {};
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    // Detect category headings
+    const h2Match = line.match(/^#{1,3}\s+(.+)/);
+    const boldMatch = !h2Match && line.match(/^\*\*([^*]{3,80})\*\*\s*$/);
+    const heading = h2Match ? h2Match[1].replace(/\*+/g, '').trim() : (boldMatch ? boldMatch[1].trim() : null);
+
+    if (heading) {
+      const isCategory = /material|cost|pricing|equipment|cabling|cctv|camera|access|fire|alarm|intrusion|audio|visual|av\b|structured|backbone|infrastructure|mdf|idf|misc|general|conduit|pathway|rack|panel|device|summary|breakdown|bill|bom/i.test(heading);
+      const isNonCategory = /confidence|methodology|timeline|schedule|rfi|risk|note|assumption|disclaimer|verification|validation|labor|phase|rough|trim|programming|testing|commissioning|what to do|next step/i.test(heading);
+      if (isCategory && !isNonCategory) {
+        if (currentCategory && currentCategory.items.length > 0) categories.push(currentCategory);
+        currentCategory = { name: heading, items: [], subtotal: 0 };
+        inTable = false; headersParsed = false; colMap = {};
+      } else if (isNonCategory) {
+        if (currentCategory && currentCategory.items.length > 0) categories.push(currentCategory);
+        currentCategory = null; inTable = false;
+      }
+      continue;
+    }
+
+    if (line.startsWith('|') && line.includes('|')) {
+      const cells = line.split('|').map(c => c.trim()).filter(Boolean);
+      if (cells.length < 2) continue;
+      if (cells.every(c => /^[-:]+$/.test(c))) { headersParsed = true; continue; }
+      if (!headersParsed && !inTable) {
+        colMap = {};
+        cells.forEach((cell, idx) => {
+          const cl = cell.toLowerCase();
+          if (cl.includes('item') || cl.includes('description') || cl.includes('material') || cl.includes('equipment') || cl.includes('component') || cl.includes('product')) colMap.item = idx;
+          else if (cl === 'qty' || cl === 'quantity' || cl.includes('qty')) colMap.qty = idx;
+          else if (cl.includes('unit cost') || cl.includes('unit price') || cl.includes('rate') || cl.includes('unit$')) colMap.unitCost = idx;
+          else if (cl.includes('ext') || cl.includes('total') || cl.includes('amount') || cl.includes('cost')) {
+            if (colMap.extCost === undefined) colMap.extCost = idx;
+          }
+          else if (cl === 'unit' || cl === 'uom') colMap.unit = idx;
+        });
+        inTable = true; continue;
+      }
+      if (inTable && headersParsed && currentCategory) {
+        const firstCell = cells[0] || '';
+        if (/^(total|subtotal|grand total|sum|markup|margin|tax)/i.test(firstCell.replace(/\*+/g, '').trim())) {
+          const lastCell = cells[cells.length - 1];
+          const subtMatch = lastCell.match(/\$?([\d,]+\.?\d*)/);
+          if (subtMatch) currentCategory.subtotal = parseFloat(subtMatch[1].replace(/,/g, ''));
+          continue;
+        }
+        if (firstCell.includes('continue') || firstCell.includes('...') || firstCell.replace(/\*+/g, '').trim() === '') continue;
+        const itemName = cells[colMap.item !== undefined ? colMap.item : 0] || '';
+        let qty = 1, unit = 'ea', unitCost = 0, extCost = 0;
+        if (colMap.qty !== undefined && cells[colMap.qty]) { const qv = cells[colMap.qty].replace(/[,\s]/g, ''); qty = parseFloat(qv) || parseInt(qv) || 1; }
+        if (colMap.unit !== undefined && cells[colMap.unit]) { unit = cells[colMap.unit].toLowerCase().trim() || 'ea'; }
+        if (colMap.unitCost !== undefined && cells[colMap.unitCost]) { const m = cells[colMap.unitCost].match(/\$?([\d,]+\.?\d*)/); if (m) unitCost = parseFloat(m[1].replace(/,/g, '')); }
+        if (colMap.extCost !== undefined && cells[colMap.extCost]) { const m = cells[colMap.extCost].match(/\$?([\d,]+\.?\d*)/); if (m) extCost = parseFloat(m[1].replace(/,/g, '')); }
+        if (extCost === 0 && unitCost > 0 && qty > 0) extCost = qty * unitCost;
+        if (unitCost === 0 && extCost > 0 && qty > 0) unitCost = extCost / qty;
+        // Fallback positional parsing
+        if (qty === 1 && unitCost === 0 && extCost === 0 && cells.length >= 3) {
+          for (let ci = 1; ci < cells.length; ci++) {
+            const val = cells[ci].replace(/[,\s$]/g, ''); const num = parseFloat(val);
+            if (!isNaN(num)) {
+              if (qty === 1 && num === Math.floor(num) && num < 100000 && ci < cells.length - 1) qty = num;
+              else if (unitCost === 0 && num > 0) unitCost = num;
+              else if (extCost === 0 && num > 0) { extCost = num; break; }
+            }
+          }
+          if (extCost === 0 && unitCost > 0) extCost = qty * unitCost;
+        }
+        const cleanName = itemName.replace(/\*+/g, '').trim();
+        if (cleanName.length < 2 || /^[-:]+$/.test(cleanName)) continue;
+        currentCategory.items.push({ item: cleanName, qty, unit, unitCost: Math.round(unitCost * 100) / 100, extCost: Math.round(extCost * 100) / 100 });
+      }
+    } else {
+      if (inTable && headersParsed) { inTable = false; headersParsed = false; }
+    }
+  }
+  if (currentCategory && currentCategory.items.length > 0) categories.push(currentCategory);
+  let grandTotal = 0;
+  for (const cat of categories) {
+    if (cat.subtotal === 0) cat.subtotal = cat.items.reduce((sum, item) => sum + (item.extCost || 0), 0);
+    grandTotal += cat.subtotal;
+  }
+  return { categories, grandTotal: Math.round(grandTotal * 100) / 100 };
+}
+
+// ── Grand Total Extractor — multiple strategies ──
+function extractGrandTotal(markdown) {
+  if (!markdown) return 0;
+  // Strategy 1: Look for explicit "Grand Total" lines
+  const patterns = [
+    /grand\s*total[^$\n]*\$\s*([\d,]+(?:\.\d{1,2})?)/i,
+    /total\s*(?:project|estimate|bid|contract|cost|price)[^$\n]*\$\s*([\d,]+(?:\.\d{1,2})?)/i,
+    /\*\*(?:grand\s*)?total\*\*[^$\n]*\$\s*([\d,]+(?:\.\d{1,2})?)/i,
+    /total\s*with\s*markup[^$\n]*\$\s*([\d,]+(?:\.\d{1,2})?)/i,
+    /\|\s*\*?\*?(?:grand\s*)?total\*?\*?\s*\|[^|]*\|\s*\$?\s*([\d,]+(?:\.\d{1,2})?)\s*\|/i,
+  ];
+  for (const regex of patterns) {
+    const match = markdown.match(regex);
+    if (match) {
+      const val = parseFloat(match[1].replace(/,/g, ''));
+      if (val > 100) return val; // Sanity check — real projects > $100
+    }
+  }
+  return 0;
+}
+
+// ── Discipline guesser for SOV division ──
+function guessDivision(name) {
+  const n = name.toLowerCase();
+  if (n.includes('fire') || n.includes('alarm') || n.includes('detection')) return 'Division 28';
+  if (n.includes('security') || n.includes('access') || n.includes('intrusion') || n.includes('cctv') || n.includes('camera')) return 'Division 28';
+  return 'Division 27';
+}
+
 
 export async function onRequestPost(context) {
   const { env, request, data } = context;
@@ -18,17 +155,45 @@ export async function onRequestPost(context) {
     const pricing = pkg.pricingConfig || {};
     const analysis = pkg.analysis || {};
     const rfis = pkg.rfis || {};
+    const userInputs = pkg.userInputs || {};
     const id = crypto.randomUUID().replace(/-/g, '');
     const importId = pkg._meta.generatedAt || new Date().toISOString();
 
-    // Calculate contract value from analysis totals
-    const totals = analysis.totals || {};
-    const contractValue = totals.grandTotal || totals.totalWithMarkup || 0;
+    // ── Extract contract value and SOV data ──
+    // v3.0 exports include a pre-structured `financials` section.
+    // v2.0 exports only have raw markdown — parse it server side.
+    const rawMarkdown = analysis.rawMarkdown || '';
+    const financials = pkg.financials || null;
+    let bom;
+    let contractValue = 0;
+
+    if (financials && financials.grandTotal > 0 && financials.categories && financials.categories.length > 0) {
+      // v3.0+ export — use pre-structured financial data directly
+      bom = financials;
+      contractValue = financials.grandTotal;
+    } else {
+      // v2.0 fallback — parse raw markdown for BOM tables
+      bom = extractBOMFromMarkdown(rawMarkdown);
+      contractValue = extractGrandTotal(rawMarkdown);
+      if (contractValue === 0 && bom.grandTotal > 0) {
+        contractValue = bom.grandTotal;
+      }
+    }
+
+    // Fallback to infrastructure totals if everything else fails
+    if (contractValue === 0) {
+      const infraCheck = pkg.infrastructure || {};
+      if (infraCheck.locations && Array.isArray(infraCheck.locations)) {
+        contractValue = infraCheck.locations.reduce((sum, loc) => {
+          return sum + (loc.items || []).reduce((s, i) => s + (i.budgeted_cost || 0), 0);
+        }, 0);
+      }
+    }
 
     // ── Collect ALL statements into a batch for atomic execution ──
     const statements = [];
 
-    // 1. Create project
+    // 1. Create project — field names mapped to SmartPlans export format
     statements.push(
       env.DB.prepare(`
         INSERT INTO projects (
@@ -58,9 +223,9 @@ export async function onRequestPost(context) {
         contractValue,
         project.disciplines ? JSON.stringify(project.disciplines) : null,
         pricing.tier || 'mid',
-        pricing.regionMultiplier || 'national_average',
-        pricing.prevailingWage || '',
-        pricing.workShift || '',
+        pricing.regionalMultiplier || 'national_average',
+        project.prevailingWage || pricing.prevailingWage || '',
+        project.workShift || pricing.workShift || '',
         pricing.markup?.material || 25,
         pricing.markup?.labor || 30,
         pricing.markup?.equipment || 15,
@@ -68,18 +233,24 @@ export async function onRequestPost(context) {
         pricing.laborRates ? JSON.stringify(pricing.laborRates) : null,
         pricing.burdenRate || 35,
         pricing.includeBurden !== undefined ? (pricing.includeBurden ? 1 : 0) : 1,
-        `Imported from SmartPlans on ${new Date().toLocaleDateString()}`,
+        `Imported from SmartPlans on ${new Date().toLocaleDateString()}. ${userInputs.notes || ''}`.trim(),
         importId,
         data.user.id,
       )
     );
 
-    // 2. Import SOV line items from analysis sections
-    if (analysis.sections && Array.isArray(analysis.sections)) {
+    // 2. Import SOV line items — each BOM category → one SOV line item
+    //    Each individual item within a category is tracked in the detail.
+    let sovItemCount = 0;
+    if (bom.categories && bom.categories.length > 0) {
       let sortOrder = 0;
-      for (const section of analysis.sections) {
+      for (const cat of bom.categories) {
         const itemId = crypto.randomUUID().replace(/-/g, '');
         sortOrder++;
+        sovItemCount++;
+        const division = guessDivision(cat.name);
+        const materialCost = cat.subtotal || (cat.items || []).reduce((s, i) => s + (i.extCost || 0), 0);
+
         statements.push(
           env.DB.prepare(`
             INSERT INTO sov_items (id, project_id, item_number, description, division, category,
@@ -88,28 +259,63 @@ export async function onRequestPost(context) {
               ?, ?, ?, ?, ?, ?)
           `).bind(
             itemId, id,
-            section.itemNumber || `SP-${String(sortOrder).padStart(3, '0')}`,
-            section.description || section.name || 'Imported line item',
-            section.division || null,
-            section.category || 'material',
-            section.totalValue || section.scheduledValue || 0,
-            section.materialCost || 0,
-            section.laborCost || 0,
-            section.equipmentCost || 0,
-            section.subCost || 0,
+            `27-${String(sortOrder).padStart(3, '0')}`,
+            cat.name,
+            division,
+            'material',
+            materialCost,
+            materialCost,
+            0,
+            0,
+            0,
+            sortOrder,
+          )
+        );
+      }
+    } else if (analysis.sections && typeof analysis.sections === 'object' && !Array.isArray(analysis.sections)) {
+      // Fallback: Use section titles from the parsed sections object
+      let sortOrder = 0;
+      for (const [key, section] of Object.entries(analysis.sections)) {
+        if (/confidence|methodology|timeline|schedule|rfi|risk|note|assumption|disclaimer|verification|validation|next step/i.test(section.title || key)) continue;
+        const itemId = crypto.randomUUID().replace(/-/g, '');
+        sortOrder++;
+        sovItemCount++;
+        let sectionValue = 0;
+        const totalMatch = (section.content || '').match(/(?:total|subtotal)[^$]*\$\s*([\d,]+(?:\.\d{1,2})?)/i);
+        if (totalMatch) sectionValue = parseFloat(totalMatch[1].replace(/,/g, ''));
+
+        statements.push(
+          env.DB.prepare(`
+            INSERT INTO sov_items (id, project_id, item_number, description, division, category,
+              scheduled_value, material_cost, labor_cost, equipment_cost, sub_cost, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?)
+          `).bind(
+            itemId, id,
+            `SP-${String(sortOrder).padStart(3, '0')}`,
+            section.title || key.replace(/_/g, ' '),
+            guessDivision(section.title || key),
+            'material',
+            sectionValue,
+            sectionValue,
+            0, 0, 0,
             sortOrder,
           )
         );
       }
     }
 
-    // 3. Import RFIs
+    // 3. Import RFIs — SmartPlans exports { id, question, detail, selected }
     if (rfis.items && Array.isArray(rfis.items)) {
       let rfiNum = 0;
       for (const rfi of rfis.items) {
         if (!rfi.selected) continue;
         rfiNum++;
         const rfiId = crypto.randomUUID().replace(/-/g, '');
+        // SmartPlans RFI format: question field has the full question text
+        // Use a truncated version as the subject, full text as question
+        const fullQuestion = rfi.question || rfi.description || '';
+        const subject = rfi.subject || rfi.title || (fullQuestion.length > 80 ? fullQuestion.substring(0, 77) + '...' : fullQuestion) || `RFI ${rfiNum}`;
         statements.push(
           env.DB.prepare(`
             INSERT INTO rfis (id, project_id, rfi_number, subject, question, detail,
@@ -118,8 +324,8 @@ export async function onRequestPost(context) {
               ?, ?, 'smartplans', ?, ?)
           `).bind(
             rfiId, id, rfiNum,
-            rfi.subject || rfi.title || `RFI ${rfiNum}`,
-            rfi.question || rfi.description || '',
+            subject,
+            fullQuestion,
             rfi.detail || rfi.fullText || null,
             rfi.discipline || null,
             rfi.priority || 'normal',
@@ -158,7 +364,7 @@ export async function onRequestPost(context) {
           )
         );
 
-        // Import equipment items
+        // Import equipment items for this location
         if (loc.items && Array.isArray(loc.items)) {
           for (const item of loc.items) {
             const itemId = crypto.randomUUID().replace(/-/g, '');
@@ -183,7 +389,7 @@ export async function onRequestPost(context) {
           }
         }
 
-        // Import cable runs
+        // Import cable runs for this location
         if (loc.cable_runs && Array.isArray(loc.cable_runs)) {
           for (const run of loc.cable_runs) {
             const runId = crypto.randomUUID().replace(/-/g, '');
@@ -208,9 +414,22 @@ export async function onRequestPost(context) {
     const wbs = pkg.workBreakdown || {};
     if (wbs.phases && Array.isArray(wbs.phases) && wbs.phases.length > 0) {
       // Calculate average labor rate for cost estimates
-      const avgRate = pricing.laborRates
-        ? Object.values(typeof pricing.laborRates === 'string' ? JSON.parse(pricing.laborRates) : pricing.laborRates).reduce((s, v) => s + (typeof v === 'number' ? v : 0), 0) / Math.max(Object.keys(typeof pricing.laborRates === 'string' ? JSON.parse(pricing.laborRates) : pricing.laborRates).length, 1)
-        : 45;
+      let avgRate = 45;
+      try {
+        const rates = pricing.laborRates
+          ? (typeof pricing.laborRates === 'string' ? JSON.parse(pricing.laborRates) : pricing.laborRates)
+          : null;
+        if (rates && typeof rates === 'object') {
+          const vals = Object.values(rates).filter(v => typeof v === 'number' && v > 0);
+          if (vals.length > 0) avgRate = vals.reduce((s, v) => s + v, 0) / vals.length;
+        }
+      } catch (e) { /* use default 45 */ }
+
+      // Also use loaded (burdened) rates if available
+      if (pricing.loadedRates && typeof pricing.loadedRates === 'object') {
+        const loadedVals = Object.values(pricing.loadedRates).filter(v => typeof v === 'number' && v > 0);
+        if (loadedVals.length > 0) avgRate = loadedVals.reduce((s, v) => s + v, 0) / loadedVals.length;
+      }
 
       let wbsSortOrder = 0;
       for (const phase of wbs.phases) {
@@ -311,18 +530,33 @@ export async function onRequestPost(context) {
     }
 
     // 6. Activity log
+    const infraCount = (infra.locations || []).length;
+    const wbsCount = (wbs.phases || []).length;
+    const rfiCount = (rfis.items || []).filter(r => r.selected).length;
     statements.push(
       env.DB.prepare(
         `INSERT INTO activity_log (project_id, user_id, action, entity_type, entity_id, description)
          VALUES (?, ?, 'import', 'project', ?, ?)`
-      ).bind(id, data.user.id, id, `Imported from SmartPlans: ${project.name || 'Project'}`)
+      ).bind(id, data.user.id, id,
+        `Imported from SmartPlans: ${project.name || 'Project'} — $${contractValue.toLocaleString()} contract, ${sovItemCount} SOV items, ${infraCount} infrastructure locations, ${wbsCount} WBS phases, ${rfiCount} RFIs`
+      )
     );
 
     // ── EXECUTE ALL STATEMENTS ATOMICALLY ──
     // D1 batch() ensures all-or-nothing: if any statement fails, none are committed
     await env.DB.batch(statements);
 
-    return Response.json({ id, success: true }, { status: 201 });
+    return Response.json({
+      id,
+      success: true,
+      stats: {
+        contractValue,
+        sovItems: sovItemCount,
+        infrastructure: infraCount,
+        wbsPhases: wbsCount,
+        rfis: rfiCount,
+      }
+    }, { status: 201 });
   } catch (err) {
     console.error('Import error:', err);
     return Response.json({ error: 'Failed to import SmartPlans data: ' + err.message }, { status: 500 });
