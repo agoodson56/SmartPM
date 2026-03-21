@@ -17,7 +17,7 @@ const App = {
   },
 
   // ── Role-Based Permissions ────────────────────────────────
-  // Admin:   full access, change all passwords, delete completed projects
+  // Admin:   full access, change all passwords, Delete Projects
   // Ops Mgr: edit all project data, change PM password
   // PM:      edit material used & labor used only
   // Viewer:  view-only (3D role)
@@ -291,7 +291,7 @@ const App = {
           <div class="project-card-stat"><div>Contract</div><div class="project-card-stat-value">$${formatMoney(p.current_contract_value || 0)}</div></div>
           <div class="project-card-stat"><div>Billed</div><div class="project-card-stat-value">$${formatMoney(p.total_billed || 0)}</div></div>
         </div>
-        ${canDelete && p.status === 'complete' ? `<button class="btn btn-danger btn-sm" style="margin-top:10px;width:100%;" onclick="event.stopPropagation(); App.deleteProject('${p.id}', '${esc(p.name).replace(/'/g, "\\'")}')">🗑 Delete Completed Project</button>` : ''}
+        ${canDelete ? `<button class="btn btn-danger btn-sm" style="margin-top:10px;width:100%;" onclick="event.stopPropagation(); App.deleteProject('${p.id}', '${esc(p.name).replace(/'/g, "\\'")}')">🗑 Delete Project</button>` : ''}
       </div>`).join('')}</div>`;
   },
 
@@ -371,7 +371,7 @@ const App = {
         </div>
         <div class="page-actions">
           ${this.Permissions.can('canEditProject') ? `<button class="btn btn-secondary" onclick="App.navigate('project/${p.id}/settings')">⚙️ Settings</button>` : ''}
-          ${this.Permissions.can('canDeleteProject') && p.status === 'complete' ? `<button class="btn btn-danger" onclick="App.deleteProject('${p.id}', '${esc(p.name).replace(/'/g, "\\'")}')">🗑 Delete Project</button>` : ''}
+          ${this.Permissions.can('canDeleteProject') ? `<button class="btn btn-danger" onclick="App.deleteProject('${p.id}', '${esc(p.name).replace(/'/g, "\\'")}')">🗑 Delete Project</button>` : ''}
         </div>
       </div>
       <div class="metric-grid">
