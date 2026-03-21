@@ -117,7 +117,7 @@ App._renderWBSPhase = function (phase, canEdit, canBudget) {
   html += `<div id="wbs-children-${s.id}" style="margin-left:16px;">`;
   if (s.children && s.children.length > 0) {
     html += `<table class="data-table" style="margin-top:8px;"><thead><tr>`;
-    html += `<th style="width:30px;"></th><th>WBS</th><th>Task</th><th style="text-align:right;">Material 🔒</th><th style="text-align:right;">Labor 🔒</th><th style="text-align:right;">Progress</th><th>Status</th>`;
+    html += `<th style="width:30px;"></th><th>WBS</th><th>Task</th><th style="text-align:right;">Material 🔒</th><th style="text-align:right;">Labor 🔒</th><th style="text-align:right;">Installed</th><th style="text-align:right;">Hrs Used</th><th style="text-align:right;">Progress</th><th>Status</th>`;
     if (canEdit) html += `<th></th>`;
     html += `</tr></thead><tbody>`;
 
@@ -133,7 +133,9 @@ App._renderWBSPhase = function (phase, canEdit, canBudget) {
       html += `<td style="font-weight:600;">${esc(locTask.wbs_code)}</td>`;
       html += `<td><div style="font-weight:600;">${trafficLight(ltOverH)} ${esc(locTask.title)}</div></td>`;
       html += `<td style="text-align:right;color:${healthColor(ltH)}">${trafficLight(ltH)} $${formatMoney(locTask.actual_material)} / $${formatMoney(locTask.budgeted_material)}</td>`;
-      html += `<td style="text-align:right;color:${healthColor(ltLabH)}">${trafficLight(ltLabH)} ${(locTask.actual_labor_hrs || 0).toFixed(1)} / ${(locTask.budgeted_labor_hrs || 0).toFixed(1)} hrs</td>`;
+      html += `<td style="text-align:right;">${(locTask.budgeted_labor_hrs || 0).toFixed(1)} hrs</td>`;
+      html += `<td style="text-align:right;font-weight:600;">${locTask.actual_qty_installed || 0} ${esc(locTask.unit || 'ea')}</td>`;
+      html += `<td style="text-align:right;color:${healthColor(ltLabH)};font-weight:600;">${trafficLight(ltLabH)} ${(locTask.actual_labor_hrs || 0).toFixed(1)} / ${(locTask.budgeted_labor_hrs || 0).toFixed(1)}</td>`;
       html += `<td style="text-align:right;"><div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;"><div class="progress-bar" style="height:5px;width:60px;"><div class="progress-fill" style="width:${Math.min(ltPct, 100)}%;${progressColor(ltOverH)}"></div></div><span style="font-weight:600;font-size:12px;">${ltPct.toFixed(0)}%</span></div></td>`;
       html += `<td><span class="badge badge--${locTask.status === 'complete' ? 'active' : locTask.status === 'in_progress' ? 'amber' : 'draft'}">${formatStatus(locTask.status)}</span></td>`;
       if (canEdit) html += `<td><button class="btn-icon" onclick="event.stopPropagation(); App.editWBSTask('${locTask.id}')">✏️</button></td>`;
@@ -141,7 +143,7 @@ App._renderWBSPhase = function (phase, canEdit, canBudget) {
 
       // Sub-tasks (leaf tasks)
       if (locTask.children && locTask.children.length > 0) {
-        html += `<tr id="wbs-sub-${locTask.id}"><td colspan="${canEdit ? 8 : 7}" style="padding:0;">`;
+        html += `<tr id="wbs-sub-${locTask.id}"><td colspan="${canEdit ? 10 : 9}" style="padding:0;">`;
         html += `<table class="data-table" style="margin:0;border:none;"><tbody>`;
         for (const task of locTask.children) {
           const tH = localHealth(task.actual_material, task.budgeted_material);
@@ -152,6 +154,8 @@ App._renderWBSPhase = function (phase, canEdit, canBudget) {
           html += `<td style="font-size:13px;">${esc(task.title)}</td>`;
           html += `<td style="text-align:right;font-size:12px;">$${formatMoney(task.budgeted_material)}</td>`;
           html += `<td style="text-align:right;font-size:12px;">${(task.budgeted_labor_hrs || 0).toFixed(1)} hrs</td>`;
+          html += `<td style="text-align:right;font-size:12px;font-weight:600;">${task.actual_qty_installed || 0} ${esc(task.unit || 'ea')}</td>`;
+          html += `<td style="text-align:right;font-size:12px;font-weight:600;color:${healthColor(tH)}">${(task.actual_labor_hrs || 0).toFixed(1)}</td>`;
           html += `<td style="text-align:right;"><div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;"><div class="progress-bar" style="height:4px;width:50px;"><div class="progress-fill" style="width:${Math.min(tPct, 100)}%"></div></div><span style="font-size:11px;">${tPct.toFixed(0)}%</span></div></td>`;
           html += `<td><span class="badge badge--${task.status === 'complete' ? 'active' : task.status === 'in_progress' ? 'amber' : 'draft'}" style="font-size:10px;">${formatStatus(task.status)}</span></td>`;
           if (canEdit) html += `<td><button class="btn-icon" onclick="event.stopPropagation(); App.editWBSTask('${task.id}')" style="font-size:12px;">✏️</button></td>`;
@@ -177,15 +181,26 @@ App.editWBSTask = async function (taskId) {
 
   this.showModal(`Update Task: ${task.title}`, `<div class="form-grid">
     <div class="form-group form-full"><label class="form-label">Task</label><div style="font-weight:600;padding:8px 0;">${esc(task.wbs_code)} — ${esc(task.title)}</div></div>
-    <div class="form-group form-full"><div style="padding:8px 12px;background:var(--bg-card);border-radius:6px;border:1px solid var(--border);font-size:12px;display:flex;gap:20px;flex-wrap:wrap;">
-      <span>🔒 Material Budget: <strong>$${formatMoney(task.budgeted_material)}</strong></span>
-      <span>🔒 Labor Budget: <strong>${(task.budgeted_labor_hrs || 0).toFixed(1)} hrs ($${formatMoney(task.budgeted_labor_cost)})</strong></span>
-      <span>🔒 Total Budget: <strong>$${formatMoney(task.budgeted_total)}</strong></span>
+
+    <div class="form-group form-full"><div style="padding:12px 16px;background:var(--bg-card);border-radius:8px;border:2px solid rgba(191,144,0,0.5);margin-bottom:4px;">
+      <div style="font-weight:700;font-size:13px;color:var(--primary);margin-bottom:8px;">📊 Estimated from Bid (Read-Only)</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-size:13px;">
+        <div><div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Material Cost</div><div style="font-weight:700;font-size:16px;">$${formatMoney(task.budgeted_material)}</div></div>
+        <div><div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Labor Hours</div><div style="font-weight:700;font-size:16px;">${(task.budgeted_labor_hrs || 0).toFixed(1)} hrs</div></div>
+        <div><div style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Total Budget</div><div style="font-weight:700;font-size:16px;">$${formatMoney(task.budgeted_total)}</div></div>
+      </div>
     </div></div>
+
+    <div class="form-group form-full"><div style="padding:10px 16px;background:rgba(13,148,136,0.04);border-radius:8px;border:1px solid rgba(13,148,136,0.2);font-size:13px;">
+      <div style="font-weight:700;color:var(--primary);margin-bottom:6px;">✏️ Actual Progress — What was installed?</div>
+      <div style="color:var(--text-secondary);font-size:12px;">Enter how much material was physically installed (in feet or each) and how many labor hours were spent. You do NOT need to enter costs.</div>
+    </div></div>
+
+    <div class="form-group"><label class="form-label">Qty Installed (ft or ea)</label><input class="form-input" id="wt-aqty" type="number" step="1" value="${task.actual_qty_installed || 0}" placeholder="e.g., 500 ft or 24 ea"></div>
+    <div class="form-group"><label class="form-label">Unit</label><select class="form-select" id="wt-unit"><option value="ft" ${(task.unit || 'ea') === 'ft' ? 'selected' : ''}>Feet (ft)</option><option value="ea" ${(task.unit || 'ea') === 'ea' ? 'selected' : ''}>Each (ea)</option><option value="lot" ${(task.unit || '') === 'lot' ? 'selected' : ''}>Lot</option><option value="box" ${(task.unit || '') === 'box' ? 'selected' : ''}>Box</option></select></div>
+    <div class="form-group"><label class="form-label">Actual Labor Hours</label><input class="form-input" id="wt-alhr" type="number" step="0.5" value="${task.actual_labor_hrs || 0}"></div>
     <div class="form-group"><label class="form-label">Progress %</label><div style="display:flex;align-items:center;gap:10px;"><input class="form-input" id="wt-pct" type="range" min="0" max="100" step="5" value="${task.progress_pct || 0}" style="flex:1;" oninput="document.getElementById('wt-pct-val').textContent=this.value+'%'"><span id="wt-pct-val" style="font-weight:700;min-width:40px;">${(task.progress_pct || 0).toFixed(0)}%</span></div></div>
     <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="wt-status"><option value="not_started" ${task.status === 'not_started' ? 'selected' : ''}>Not Started</option><option value="in_progress" ${task.status === 'in_progress' ? 'selected' : ''}>In Progress</option><option value="on_hold" ${task.status === 'on_hold' ? 'selected' : ''}>On Hold</option><option value="complete" ${task.status === 'complete' ? 'selected' : ''}>Complete</option></select></div>
-    <div class="form-group"><label class="form-label">Actual Material ($)</label><input class="form-input" id="wt-amat" type="number" step="0.01" value="${task.actual_material || 0}"></div>
-    <div class="form-group"><label class="form-label">Actual Labor (hrs)</label><input class="form-input" id="wt-alhr" type="number" step="0.5" value="${task.actual_labor_hrs || 0}"></div>
     <div class="form-group"><label class="form-label">Actual Start</label><input class="form-input" id="wt-astart" type="date" value="${task.actual_start || ''}"></div>
     <div class="form-group"><label class="form-label">Actual End</label><input class="form-input" id="wt-aend" type="date" value="${task.actual_end || ''}"></div>
     <div class="form-group"><label class="form-label">Assigned To</label><input class="form-input" id="wt-assign" value="${esc(task.assigned_to || '')}"></div>
@@ -193,11 +208,15 @@ App.editWBSTask = async function (taskId) {
   </div>`, async () => {
     const pct = parseFloat(document.getElementById('wt-pct').value) || 0;
     const status = document.getElementById('wt-status').value;
-    const actualMat = parseFloat(document.getElementById('wt-amat').value) || 0;
+    const actualQty = parseFloat(document.getElementById('wt-aqty').value) || 0;
     const actualLhr = parseFloat(document.getElementById('wt-alhr').value) || 0;
+    const unit = document.getElementById('wt-unit').value;
 
-    // Auto-calculate actual labor cost and total
-    const avgRate = 45; // default
+    // Auto-calculate actual costs from qty (PM enters qty, system uses budgeted unit cost)
+    const budgetedQty = task.budgeted_qty || 1;
+    const unitCost = budgetedQty > 0 ? (task.budgeted_material / budgetedQty) : 0;
+    const actualMat = actualQty * unitCost;
+    const avgRate = 45; // default labor rate
     const actualLabCost = actualLhr * avgRate;
     const actualTotal = actualMat + actualLabCost;
 
@@ -208,6 +227,8 @@ App.editWBSTask = async function (taskId) {
       actual_labor_hrs: actualLhr,
       actual_labor_cost: actualLabCost,
       actual_total: actualTotal,
+      actual_qty_installed: actualQty,
+      unit: unit,
       actual_start: document.getElementById('wt-astart').value || null,
       actual_end: document.getElementById('wt-aend').value || null,
       assigned_to: document.getElementById('wt-assign').value.trim(),

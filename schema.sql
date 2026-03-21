@@ -384,12 +384,15 @@ CREATE TABLE IF NOT EXISTS wbs_tasks (
   budgeted_labor_cost REAL DEFAULT 0,
   budgeted_equipment REAL DEFAULT 0,
   budgeted_total REAL DEFAULT 0,
+  budgeted_qty REAL DEFAULT 0,
+  unit TEXT DEFAULT 'ea',
   -- Actuals (PM can update)
   actual_material REAL DEFAULT 0,
   actual_labor_hrs REAL DEFAULT 0,
   actual_labor_cost REAL DEFAULT 0,
   actual_equipment REAL DEFAULT 0,
   actual_total REAL DEFAULT 0,
+  actual_qty_installed REAL DEFAULT 0,
   -- Progress
   progress_pct REAL DEFAULT 0,
   status TEXT DEFAULT 'not_started',

@@ -19,6 +19,8 @@ export async function onRequestPut(context) {
     if (body.actual_labor_cost !== undefined) { fields.push('actual_labor_cost = ?'); values.push(body.actual_labor_cost); }
     if (body.actual_equipment !== undefined) { fields.push('actual_equipment = ?'); values.push(body.actual_equipment); }
     if (body.actual_total !== undefined) { fields.push('actual_total = ?'); values.push(body.actual_total); }
+    if (body.actual_qty_installed !== undefined) { fields.push('actual_qty_installed = ?'); values.push(body.actual_qty_installed); }
+    if (body.unit !== undefined) { fields.push('unit = ?'); values.push(body.unit); }
     if (body.progress_pct !== undefined) { fields.push('progress_pct = ?'); values.push(Math.min(100, Math.max(0, body.progress_pct))); }
     if (body.status !== undefined) { fields.push('status = ?'); values.push(body.status); }
     if (body.actual_start !== undefined) { fields.push('actual_start = ?'); values.push(body.actual_start); }
