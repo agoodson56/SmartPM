@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartPM — User Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',sans-serif;background:#FFFFFF;color:#1a1a2e;line-height:1.7}
+    .guide-header{background:linear-gradient(135deg,#0D9488,#0f766e);color:white;padding:40px 0;border-bottom:3px solid #BF9000}
+    .guide-header .container{display:flex;align-items:center;gap:20px}
+    .guide-header h1{font-size:28px;font-weight:800}
+    .guide-header p{font-size:14px;opacity:0.85;margin-top:4px}
+    .container{max-width:900px;margin:0 auto;padding:0 24px}
+    .guide-nav{background:#f8fafb;border-bottom:2px solid rgba(191,144,0,0.3);padding:20px 0;position:sticky;top:0;z-index:10}
+    .guide-nav .container{display:flex;flex-wrap:wrap;gap:8px}
+    .guide-nav a{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;color:#0D9488;border:1px solid rgba(13,148,136,0.2);background:white;transition:all 0.15s}
+    .guide-nav a:hover{background:#0D9488;color:white}
+    .guide-body{padding:40px 0 80px}
+    h2{font-size:22px;font-weight:800;color:#0D9488;margin:48px 0 16px;padding-bottom:8px;border-bottom:2px solid rgba(191,144,0,0.3)}
+    h3{font-size:17px;font-weight:700;color:#1a1a2e;margin:28px 0 10px}
+    h4{font-size:14px;font-weight:700;color:#0D9488;margin:20px 0 8px}
+    p,li{font-size:14px;margin-bottom:10px}
+    ul,ol{padding-left:24px;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
+    th{background:#0D9488;color:white;padding:10px 14px;text-align:left;font-weight:600}
+    td{padding:8px 14px;border:1px solid #e5e7eb}
+    tr:nth-child(even){background:#f8fafb}
+    .callout{padding:14px 18px;border-radius:8px;margin:16px 0;font-size:13px;border-left:4px solid}
+    .callout-tip{background:rgba(13,148,136,0.06);border-color:#0D9488}
+    .callout-warn{background:rgba(245,158,11,0.06);border-color:#f59e0b}
+    .callout-info{background:rgba(59,130,246,0.06);border-color:#3b82f6}
+    code{background:rgba(13,148,136,0.08);padding:2px 6px;border-radius:4px;font-size:12px}
+    .footer{background:#1a1a2e;color:rgba(255,255,255,0.6);padding:30px 0;text-align:center;font-size:12px;border-top:3px solid #BF9000}
+    .step-list{counter-reset:steps;list-style:none;padding-left:0}
+    .step-list li{counter-increment:steps;padding:10px 0 10px 40px;position:relative;border-left:2px solid rgba(13,148,136,0.2);margin-left:14px}
+    .step-list li::before{content:counter(steps);position:absolute;left:-14px;top:8px;width:28px;height:28px;background:#0D9488;color:white;border-radius:50%;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  </style>
+</head>
+<body>
+
+<div class="guide-header">
+  <div class="container">
+    <div>
+      <h1>🏗️ SmartPM — User Guide</h1>
+      <p>ELV Construction Project Manager · 3D Technology Services Inc.</p>
+      <p style="margin-top:8px;font-size:12px;opacity:0.7">Version 3.0 · Last Updated: March 2026 · <a href="https://smartpm.pages.dev/" style="color:#BF9000;text-decoration:underline;">Launch SmartPM</a></p>
+    </div>
+  </div>
+</div>
+
+<nav class="guide-nav">
+  <div class="container">
+    <a href="#overview">Overview</a>
+    <a href="#login">Login</a>
+    <a href="#roles">Roles</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#import">Importing Projects</a>
+    <a href="#wbs">Work Breakdown</a>
+    <a href="#infrastructure">Infrastructure</a>
+    <a href="#tracking">Material & Labor</a>
+    <a href="#sov">SOV & Billing</a>
+    <a href="#cos">Change Orders</a>
+    <a href="#rfis">RFIs</a>
+    <a href="#daily-log">Daily Log</a>
+    <a href="#daily-report">Daily Report</a>
+    <a href="#punch">Punch List</a>
+    <a href="#ai">AI Assistant</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+  </div>
+</nav>
+
+<div class="guide-body">
+  <div class="container">
+
+    <h2 id="overview">1. Overview</h2>
+    <p><strong>SmartPM</strong> is a full-featured ELV (Extra-Low Voltage) construction project management application. It handles everything from importing AI-generated estimates from SmartPlans to day-to-day tracking of materials installed, labor hours spent, billing, change orders, RFIs, and infrastructure.</p>
+    <h3>Key Features</h3>
+    <table>
+      <tr><th>Feature</th><th>Description</th></tr>
+      <tr><td>📦 SmartPlans Import</td><td>One-click import of AI-generated estimates with locked budgets</td></tr>
+      <tr><td>📐 Work Breakdown (WBS)</td><td>Hierarchical phase → location → task tracking from the bid</td></tr>
+      <tr><td>🏢 Infrastructure</td><td>MDF/IDF/TR room management with equipment, cable runs, and labor</td></tr>
+      <tr><td>🚦 Budget Health</td><td>Traffic light system (🟢🟡🔴) for instant budget visibility</td></tr>
+      <tr><td>📋 Schedule of Values</td><td>AIA G703 line items for progress billing</td></tr>
+      <tr><td>💰 Progress Billing</td><td>Track payment applications per billing period</td></tr>
+      <tr><td>📝 Change Orders</td><td>Document scope changes with cost and schedule impact</td></tr>
+      <tr><td>❓ RFIs</td><td>Track Requests for Information through resolution</td></tr>
+      <tr><td>📅 Daily Log</td><td>Field reports with weather, crew, and activity tracking</td></tr>
+      <tr><td>📧 Daily Report</td><td>Generate emailable daily status reports for stakeholders</td></tr>
+      <tr><td>✅ Punch List</td><td>Deficiency tracking through closeout</td></tr>
+      <tr><td>🤖 AI Assistant</td><td>6 Gemini AI-powered analysis tools</td></tr>
+      <tr><td>🔐 Role-Based Access</td><td>4 permission levels control data access</td></tr>
+    </table>
+    <div class="callout callout-info">ℹ️ All data is stored securely in the cloud (Cloudflare D1 database). Projects persist across sessions and can be accessed from any device.</div>
+
+    <h2 id="login">2. Logging In</h2>
+    <h4>Access URL</h4>
+    <p><code>https://smartpm.pages.dev/</code></p>
+    <h4>Login Process</h4>
+    <ol class="step-list">
+      <li>Navigate to SmartPM in your browser</li>
+      <li>Enter your <strong>Username</strong> and <strong>Password</strong></li>
+      <li>Click <strong>Sign In</strong></li>
+      <li>You'll be taken to the <strong>Dashboard</strong></li>
+    </ol>
+    <div class="callout callout-warn">⚠️ Contact your Admin if you don't have login credentials or need a password reset.</div>
+
+    <h2 id="roles">3. User Roles & Permissions</h2>
+    <p>SmartPM has four roles. Your role determines what you can see and do.</p>
+    <table>
+      <tr><th>Permission</th><th>Admin</th><th>Ops Mgr</th><th>PM</th><th>Viewer</th></tr>
+      <tr><td>View all project data</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+      <tr><td>Use AI Assistant</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+      <tr><td>Create/import projects</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
+      <tr><td>Edit project settings</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
+      <tr><td>Edit material/labor actuals</td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
+      <tr><td>Edit infrastructure budgets</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
+      <tr><td>Delete projects</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
+      <tr><td>Manage user passwords</td><td>✅</td><td>✅*</td><td>❌</td><td>❌</td></tr>
+    </table>
+    <p><em>*Ops Managers can only change PM passwords.</em></p>
+
+    <h2 id="dashboard">4. Dashboard</h2>
+    <p>The Dashboard is your home screen. It shows all projects with summary metrics.</p>
+    <h4>Dashboard Metrics</h4>
+    <ul>
+      <li><strong>Active Projects</strong> — Currently in progress</li>
+      <li><strong>Total Contract Value</strong> — Sum of all project contracts</li>
+      <li><strong>Total Billed</strong> — Sum of all billing to date</li>
+      <li><strong>Open RFIs</strong> — Unresolved questions</li>
+      <li><strong>Pending COs</strong> — Change orders awaiting approval</li>
+      <li><strong>Outstanding</strong> — Amount billed but not yet paid</li>
+    </ul>
+    <h4>Project Cards</h4>
+    <p>Each project appears as a card showing name, status, contract value, billed amount, and disciplines. Click a card to open the project.</p>
+
+    <h2 id="import">5. Importing from SmartPlans</h2>
+    <p>This is the primary workflow for creating projects.</p>
+    <ol class="step-list">
+      <li>On the Dashboard, click <strong>"📦 Import from SmartPlans"</strong></li>
+      <li>Click <strong>"📁 Choose JSON File"</strong> and select the SmartPlans export</li>
+      <li>Review the import preview (project name, disciplines, RFIs)</li>
+      <li>Click <strong>"✓ Import Project"</strong></li>
+      <li>SmartPM creates the project with all data pre-populated</li>
+    </ol>
+    <h4>What Gets Imported</h4>
+    <table>
+      <tr><th>SmartPlans Data</th><th>SmartPM Destination</th></tr>
+      <tr><td>Project name, type, location</td><td>Project metadata</td></tr>
+      <tr><td>Pricing configuration</td><td>Project settings</td></tr>
+      <tr><td>Selected RFIs</td><td>RFIs module</td></tr>
+      <tr><td>SOV line items</td><td>Schedule of Values</td></tr>
+      <tr><td>MDF/IDF rooms</td><td>Infrastructure locations</td></tr>
+      <tr><td>Equipment per room</td><td>Location items (🔒 locked budgets)</td></tr>
+      <tr><td>Cable runs</td><td>Cable run records</td></tr>
+      <tr><td>WBS phases & tasks</td><td>Work Breakdown Structure</td></tr>
+    </table>
+    <div class="callout callout-tip">💡 Budgeted amounts imported from SmartPlans are <strong>locked (🔒)</strong>. Only Admins/Ops Mgrs can modify budgets. PMs can only update actual quantities and hours.</div>
+
+    <h2 id="wbs">6. Work Breakdown Structure (WBS)</h2>
+    <p>The WBS shows your entire project broken down into <strong>Phases → Locations → Tasks</strong>.</p>
+    <h4>WBS Dashboard</h4>
+    <ul>
+      <li><strong>Project Health</strong> — Overall traffic light (🟢🟡🔴)</li>
+      <li><strong>Total Tasks</strong> — Number of WBS items</li>
+      <li><strong>Overall Progress</strong> — Weighted % complete</li>
+      <li><strong>Material Budget</strong> — Actual vs. budgeted material costs</li>
+      <li><strong>Labor Budget</strong> — Actual vs. budgeted labor hours</li>
+      <li><strong>Tasks Complete</strong> — Completed task count</li>
+    </ul>
+    <h4>Editing a WBS Task</h4>
+    <p>Click the <strong>✏️</strong> button on any task to open the update modal:</p>
+    <table>
+      <tr><th>Section</th><th>What You See</th></tr>
+      <tr><td>📊 Estimated from Bid (Read-Only)</td><td>Material cost, labor hours, and total budget from the original SmartPlans estimate</td></tr>
+      <tr><td>✏️ Actual Progress</td><td>Enter quantity installed (ft or ea), actual labor hours, progress %, and status</td></tr>
+    </table>
+    <div class="callout callout-tip">💡 <strong>PMs only enter what they know:</strong> how many feet or pieces were installed and how many hours it took. You do NOT need to enter dollar amounts — the system calculates costs automatically.</div>
+
+    <h2 id="infrastructure">7. Infrastructure Module</h2>
+    <p>Manage telecom rooms (MDF, IDF, TR) and their contents.</p>
+    <h4>Location Detail Tabs</h4>
+    <table>
+      <tr><th>Tab</th><th>What It Tracks</th></tr>
+      <tr><td>📦 Equipment</td><td>Patch panels, switches, UPS, racks — budgeted qty vs. installed qty</td></tr>
+      <tr><td>🔌 Cable Runs</td><td>Cat6, fiber, coax — budgeted feet vs. installed feet, labor hours</td></tr>
+      <tr><td>⏱️ Labor</td><td>Task-level labor entries — budgeted hours vs. actual hours</td></tr>
+    </table>
+
+    <h2 id="tracking">8. Material & Labor Tracking</h2>
+    <p>This is the core daily workflow for Project Managers.</p>
+    <h4>What PMs Track Each Day</h4>
+    <table>
+      <tr><th>What to Enter</th><th>Where</th><th>Example</th></tr>
+      <tr><td>Material installed (qty)</td><td>WBS task or Equipment tab</td><td>"Installed 24 ea patch panels"</td></tr>
+      <tr><td>Cable pulled (feet)</td><td>Cable Runs tab</td><td>"Pulled 2,500 ft of Cat6A"</td></tr>
+      <tr><td>Labor hours spent</td><td>WBS task or Labor tab</td><td>"8.5 hours on terminations"</td></tr>
+      <tr><td>Task progress %</td><td>WBS task edit</td><td>"Rough-in: 65% complete"</td></tr>
+      <tr><td>Task status</td><td>WBS task edit</td><td>"In Progress" / "Complete"</td></tr>
+    </table>
+    <div class="callout callout-warn">⚠️ <strong>Update daily!</strong> The more current your actuals, the more accurate your traffic light indicators and daily reports will be.</div>
+
+    <h2 id="sov">9. Schedule of Values & Billing</h2>
+    <h4>SOV</h4>
+    <p>AIA G703-format line items. Each line item has a scheduled value, material/labor breakdown, and completion percentage. Items are auto-created from SmartPlans import.</p>
+    <h4>Progress Billing</h4>
+    <p>Create billing periods (monthly) and record work completed and materials stored for each SOV line item. The system calculates retainage, previous payments, and current payment due.</p>
+
+    <h2 id="cos">10. Change Orders</h2>
+    <p>Track scope changes with financial and schedule impact.</p>
+    <ul>
+      <li><strong>Types:</strong> Addition, Deduction, No-Cost Change</li>
+      <li><strong>Status:</strong> Pending → Approved / Rejected</li>
+      <li><strong>AI Feature:</strong> Click "🤖 AI Impact Analysis" for cumulative impact assessment</li>
+    </ul>
+
+    <h2 id="rfis">11. RFIs</h2>
+    <p>Track Requests for Information from submission to response.</p>
+    <ul>
+      <li>Pre-populated RFIs from SmartPlans import</li>
+      <li>Track status: Open → Answered → Closed</li>
+      <li><strong>AI Feature:</strong> "🤖 AI Smart RFIs" drafts professional questions automatically</li>
+    </ul>
+
+    <h2 id="daily-log">12. Daily Log</h2>
+    <p>Record daily field reports including:</p>
+    <ul>
+      <li>Weather conditions and temperature</li>
+      <li>Crew size and hours worked</li>
+      <li>Work performed (with specific detail)</li>
+      <li>Delays, safety incidents, visitor log</li>
+      <li>Materials received and installed</li>
+    </ul>
+    <div class="callout callout-tip">💡 <strong>Pro Tip:</strong> Be specific in daily logs — mention room numbers, equipment models, and cable counts. The AI uses your logs for productivity analysis and progress reports.</div>
+
+    <h2 id="daily-report">13. Daily Status Report</h2>
+    <p>The <strong>📧 Daily Report</strong> module generates formatted status reports for emailing to stakeholders.</p>
+    <h4>How to Generate a Report</h4>
+    <ol class="step-list">
+      <li>Open a project and click <strong>"📧 Daily Report"</strong> in the sidebar</li>
+      <li>Select the <strong>report date</strong> and enter the <strong>recipient email address</strong></li>
+      <li>Click <strong>"📊 Generate Report"</strong></li>
+      <li>The report appears below with full project status</li>
+      <li>Click <strong>"📋 Copy to Clipboard"</strong> to paste into any email, or</li>
+      <li>Click <strong>"📧 Email Report"</strong> to open your email client with the report pre-filled</li>
+    </ol>
+    <h4>Report Contents</h4>
+    <table>
+      <tr><th>Section</th><th>What It Shows</th></tr>
+      <tr><td>📊 Project Summary</td><td>Contract value, overall progress %, health status, tasks complete</td></tr>
+      <tr><td>💰 Budget Status</td><td>Material and labor: budgeted vs. actual with % used and traffic lights</td></tr>
+      <tr><td>📐 Phase Progress</td><td>Each WBS phase with progress %, material spend, and labor hours</td></tr>
+      <tr><td>🏢 Infrastructure</td><td>Location statuses with equipment and cable run counts</td></tr>
+    </table>
+
+    <h2 id="punch">14. Punch List</h2>
+    <p>Track deficiency items from walkthrough to closeout.</p>
+    <ul>
+      <li>Assign items by location, discipline, and priority</li>
+      <li>Track status: Open → In Progress → Completed → Verified</li>
+      <li><strong>AI Feature:</strong> "🤖 AI Priority Plan" ranks items by criticality</li>
+    </ul>
+
+    <h2 id="ai">15. AI Assistant</h2>
+    <p>SmartPM includes 6 AI-powered features driven by <strong>Google Gemini 3.1 Pro</strong>:</p>
+    <table>
+      <tr><th>Feature</th><th>What It Does</th><th>Where</th></tr>
+      <tr><td>📊 AI Progress Report</td><td>Analyzes daily logs into executive summary</td><td>Daily Log page</td></tr>
+      <tr><td>❓ AI Smart RFIs</td><td>Drafts professional RFI questions</td><td>RFIs page</td></tr>
+      <tr><td>📝 AI Impact Analysis</td><td>Assesses change order financial/schedule impact</td><td>Change Orders page</td></tr>
+      <tr><td>✅ AI Priority Plan</td><td>Ranks punch list by criticality</td><td>Punch List page</td></tr>
+      <tr><td>💰 AI Budget Forecast</td><td>Predicts budget health trajectory</td><td>AI Assistant page</td></tr>
+      <tr><td>📋 AI SOV Validation</td><td>Cross-references % complete vs. log evidence</td><td>SOV page</td></tr>
+    </table>
+    <div class="callout callout-info">ℹ️ <strong>The AI is read-only.</strong> It analyzes your data and generates reports but never modifies your project records.</div>
+
+    <h2 id="troubleshooting">16. Troubleshooting</h2>
+    <table>
+      <tr><th>Issue</th><th>Solution</th></tr>
+      <tr><td>Can't log in</td><td>Contact your Admin for credentials or password reset</td></tr>
+      <tr><td>Can't see delete button</td><td>Only Admin role can delete projects</td></tr>
+      <tr><td>Budget fields are locked (🔒)</td><td>Only Admin/Ops Mgr can edit budgets. PMs can edit actuals only.</td></tr>
+      <tr><td>Import fails</td><td>Ensure the file is a valid SmartPlans JSON export. Check browser console for errors.</td></tr>
+      <tr><td>AI analysis fails</td><td>Ensure you have project data (SOV, logs, etc.) for the AI to analyze. Empty projects return errors.</td></tr>
+      <tr><td>Daily report won't email</td><td>The email button uses mailto: — you need an email client configured on your device.</td></tr>
+      <tr><td>Data not saving</td><td>Check your internet connection. SmartPM requires connectivity to save to the cloud database.</td></tr>
+      <tr><td>Project list empty</td><td>Create a project or import from SmartPlans. Ensure you're logged in with the correct account.</td></tr>
+    </table>
+
+  </div>
+</div>
+
+<div class="footer">
+  <div class="container">
+    <p>© 2026 3D Technology Services Inc. · www.3dtsi.com · SmartPM User Guide v3.0</p>
+  </div>
+</div>
+
+</body>
+</html>
