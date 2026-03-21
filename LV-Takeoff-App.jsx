@@ -4,7 +4,7 @@ import DetailedBOM, { generateDetailedBOM } from './src/components/DetailedBOM.j
 import ProjectManagerPortal from './src/components/ProjectManagerPortal.jsx';
 import SettingsPortal, { DEFAULT_SETTINGS } from './src/components/SettingsPortal.jsx';
 import FloorPlanOverlay from './src/components/FloorPlanOverlay.jsx';
-import { analyzeFloorPlan } from './src/services/blueprintAnalyzer.js';
+import { analyzeFloorPlan, analyzeAllSheets, convertToDeviceCounts } from './src/services/blueprintAnalyzer.js';
 
 // Main Application Component
 export default function LVTakeoffSystem() {
@@ -640,37 +640,98 @@ export default function LVTakeoffSystem() {
     }
   };
 
-  // Simulate AI Processing (restored to working 8:30 AM version)
+  // Process documents with real AI or demo data
   const processDocuments = async () => {
     setIsProcessing(true);
     setCurrentStep(2);
 
-    const stages = [
-      { status: 'Uploading files to processing queue...', progress: 5 },
-      { status: 'Extracting text from specifications...', progress: 15 },
-      { status: 'Parsing specification sections (Div 27, 28)...', progress: 25 },
-      { status: 'Detecting legends on plan sheets...', progress: 35 },
-      { status: 'Learning symbol types from legends...', progress: 45 },
-      { status: 'Scanning sheets for device symbols...', progress: 55 },
-      { status: 'Detecting MDF/IDF closet locations...', progress: 65 },
-      { status: 'Assigning devices to closets...', progress: 72 },
-      { status: 'Calculating cable routes (90° routing)...', progress: 80 },
-      { status: 'Computing J-hook quantities...', progress: 85 },
-      { status: 'Cross-referencing specs with plans...', progress: 90 },
-      { status: 'Detecting discrepancies and issues...', progress: 95 },
-      { status: 'Generating Master BOM...', progress: 98 },
-      { status: 'Complete!', progress: 100 }
-    ];
+    if (useAiAnalysis) {
+      // ========= REAL AI ANALYSIS =========
+      try {
+        setProcessingStatus('Uploading floor plans to Gemini Vision AI...');
+        setProcessingProgress(10);
 
-    for (const stage of stages) {
-      setProcessingStatus(stage.status);
-      setProcessingProgress(stage.progress);
-      await new Promise(r => setTimeout(r, 800 + Math.random() * 400));
+        const aiResults = await analyzeAllSheets(planFiles, (progress) => {
+          const pct = Math.round(10 + (progress.current / progress.total) * 60);
+          setProcessingProgress(pct);
+          setProcessingStatus(progress.status);
+        });
+
+        setProcessingStatus('Converting AI results to device counts...');
+        setProcessingProgress(75);
+        await new Promise(r => setTimeout(r, 300));
+
+        const deviceCounts = convertToDeviceCounts(aiResults);
+
+        setProcessingStatus('Calculating cable quantities...');
+        setProcessingProgress(85);
+        await new Promise(r => setTimeout(r, 300));
+
+        setProcessingStatus('Generating Master BOM...');
+        setProcessingProgress(95);
+        await new Promise(r => setTimeout(r, 300));
+
+        const aiBuiltResults = buildResultsFromAI(aiResults, deviceCounts);
+        setResults(aiBuiltResults);
+
+        setProcessingStatus('Complete!');
+        setProcessingProgress(100);
+        await new Promise(r => setTimeout(r, 400));
+
+        // Store detected devices for the overlay from all sheets
+        const allDevices = aiResults.sheets.flatMap((sheet, sheetIdx) =>
+          (sheet.devices || []).map((device, idx) => ({
+            ...device,
+            id: device.id || (sheetIdx * 1000 + idx + 1),
+            x: (device.x / 100) * 600,
+            y: (device.y / 100) * 400,
+            confidence: device.confidence || 0.85
+          }))
+        );
+        setDetectedDevices(allDevices);
+
+      } catch (error) {
+        console.error('[App] AI analysis failed, falling back to demo data:', error);
+        setProcessingStatus(`⚠️ AI analysis failed: ${error.message}. Using demo data...`);
+        setProcessingProgress(90);
+        await new Promise(r => setTimeout(r, 1500));
+
+        const mockResults = generateMockResults();
+        setResults(mockResults);
+        setProcessingProgress(100);
+        setProcessingStatus('Complete (demo data)');
+        await new Promise(r => setTimeout(r, 400));
+      }
+
+    } else {
+      // ========= DEMO MODE =========
+      const stages = [
+        { status: 'Uploading files to processing queue...', progress: 5 },
+        { status: 'Extracting text from specifications...', progress: 15 },
+        { status: 'Parsing specification sections (Div 27, 28)...', progress: 25 },
+        { status: 'Detecting legends on plan sheets...', progress: 35 },
+        { status: 'Learning symbol types from legends...', progress: 45 },
+        { status: 'Scanning sheets for device symbols...', progress: 55 },
+        { status: 'Detecting MDF/IDF closet locations...', progress: 65 },
+        { status: 'Assigning devices to closets...', progress: 72 },
+        { status: 'Calculating cable routes (90° routing)...', progress: 80 },
+        { status: 'Computing J-hook quantities...', progress: 85 },
+        { status: 'Cross-referencing specs with plans...', progress: 90 },
+        { status: 'Detecting discrepancies and issues...', progress: 95 },
+        { status: 'Generating Master BOM...', progress: 98 },
+        { status: 'Complete!', progress: 100 }
+      ];
+
+      for (const stage of stages) {
+        setProcessingStatus(stage.status);
+        setProcessingProgress(stage.progress);
+        await new Promise(r => setTimeout(r, 800 + Math.random() * 400));
+      }
+
+      const mockResults = generateMockResults();
+      setResults(mockResults);
     }
 
-    // Generate mock results
-    const mockResults = generateMockResults();
-    setResults(mockResults);
     setIsProcessing(false);
     setCurrentStep(3);
   };
@@ -1210,6 +1271,36 @@ export default function LVTakeoffSystem() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* AI Analysis Toggle */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 p-4 bg-black-medium rounded-xl border border-gold/30">
+                <span className="text-sm text-gold/70">Analysis Mode:</span>
+                <button
+                  onClick={() => setUseAiAnalysis(false)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${!useAiAnalysis
+                      ? 'bg-gold text-black shadow-lg shadow-gold/20'
+                      : 'bg-black-light border border-gold/30 text-gold/60 hover:bg-gold/10 hover:text-gold hover:border-gold'
+                    }`}
+                >
+                  🎭 Demo Data
+                </button>
+                <button
+                  onClick={() => setUseAiAnalysis(true)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${useAiAnalysis
+                      ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-lg shadow-cyan-500/20'
+                      : 'bg-black-light border border-gold/30 text-gold/60 hover:bg-gold/10 hover:text-gold hover:border-gold'
+                    }`}
+                >
+                  🤖 Gemini AI Vision
+                </button>
+              </div>
+              {useAiAnalysis && (
+                <p className="text-xs text-emerald-400/70 max-w-xs">
+                  AI will analyze your actual floor plans using Gemini Vision API. Requires valid API key in .env
+                </p>
+              )}
             </div>
 
             {/* Action Button */}
