@@ -310,6 +310,7 @@ const App = {
       { id: 'punch', icon: '✅', label: 'Punch List' },
       { id: 'contacts', icon: '👥', label: 'Contacts' },
       { id: 'documents', icon: '📁', label: 'Documents' },
+      { id: 'daily-report', icon: '📧', label: 'Daily Report' },
       { id: 'ai-assistant', icon: '🤖', label: 'AI Assistant' },
     ];
     if (this.Permissions.can('canEditProject')) {
@@ -349,6 +350,7 @@ const App = {
       case 'punch': this.renderPunchList(container); break;
       case 'contacts': this.renderContacts(container); break;
       case 'documents': this.renderDocuments(container); break;
+      case 'daily-report': this.renderDailyReport(container); break;
       case 'ai-assistant': this.renderAIAssistant(container); break;
       case 'settings': this.renderProjectSettings(container); break;
       default: this.renderProjectOverview(container);
