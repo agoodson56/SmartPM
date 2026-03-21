@@ -58,9 +58,9 @@
   --header-height: 56px;
 
   /* Gold Trim */
-  --gold-trim: 1px solid rgba(212, 165, 55, 0.35);
-  --gold-trim-hover: 1px solid rgba(212, 165, 55, 0.55);
-  --gold-shadow: 0 0 0 1px rgba(212, 165, 55, 0.08);
+  --gold-trim: 1px solid rgba(191, 144, 0, 0.5);
+  --gold-trim-hover: 1px solid rgba(191, 144, 0, 0.75);
+  --gold-shadow: 0 0 0 1px rgba(191, 144, 0, 0.12);
 }
 
 /* ─── Reset ─── */
@@ -119,8 +119,8 @@ body {
   padding: 40px;
   background: #FFFFFF;
   border-radius: var(--radius-xl);
-  border: 1px solid rgba(212, 165, 55, 0.4);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(212, 165, 55, 0.1);
+  border: 2px solid rgba(191, 144, 0, 0.5);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(191, 144, 0, 0.15);
 }
 
 .login-logo {
@@ -163,7 +163,7 @@ body {
   width: 100%;
   padding: 12px 14px;
   background: var(--bg-base);
-  border: 1px solid rgba(212, 165, 55, 0.3);
+  border: 1px solid rgba(191, 144, 0, 0.45);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: 14px;
@@ -228,7 +228,7 @@ body {
 .app-header {
   height: var(--header-height);
   background: #FFFFFF;
-  border-bottom: 2px solid rgba(212, 165, 55, 0.35);
+  border-bottom: 2px solid rgba(191, 144, 0, 0.55);
   display: flex;
   align-items: center;
   padding: 0 20px;
@@ -346,7 +346,7 @@ body {
 .app-sidebar {
   width: var(--sidebar-width);
   background: var(--bg-base);
-  border-right: 2px solid rgba(212, 165, 55, 0.25);
+  border-right: 2px solid rgba(191, 144, 0, 0.45);
   padding: 16px 10px;
   overflow-y: auto;
   height: calc(100vh - var(--header-height));
@@ -484,11 +484,11 @@ body {
 .btn-secondary {
   background: var(--bg-surface);
   color: var(--text-secondary);
-  border-color: rgba(212, 165, 55, 0.3);
+  border-color: rgba(191, 144, 0, 0.5);
 }
 
 .btn-secondary:hover {
-  border-color: rgba(212, 165, 55, 0.6);
+  border-color: rgba(191, 144, 0, 0.75);
   color: var(--accent-sky);
 }
 
@@ -539,14 +539,14 @@ body {
 
 .card {
   background: var(--bg-raised);
-  border: 1px solid rgba(212, 165, 55, 0.25);
+  border: 1px solid rgba(191, 144, 0, 0.5);
   border-radius: var(--radius-lg);
   padding: 20px;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .card:hover {
-  border-color: rgba(212, 165, 55, 0.45);
+  border-color: rgba(191, 144, 0, 0.7);
 }
 
 .card-header {
@@ -577,7 +577,7 @@ body {
 
 .metric-card {
   background: var(--bg-raised);
-  border: 1px solid rgba(212, 165, 55, 0.25);
+  border: 1px solid rgba(191, 144, 0, 0.5);
   border-radius: var(--radius-lg);
   padding: 18px 20px;
   position: relative;
@@ -645,7 +645,7 @@ body {
 
 .data-table-wrap {
   overflow-x: auto;
-  border: 1px solid rgba(212, 165, 55, 0.25);
+  border: 1px solid rgba(191, 144, 0, 0.5);
   border-radius: var(--radius-lg);
 }
 
@@ -964,7 +964,7 @@ body {
 .form-textarea {
   padding: 10px 12px;
   background: var(--bg-base);
-  border: 1px solid rgba(212, 165, 55, 0.3);
+  border: 1px solid rgba(191, 144, 0, 0.5);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: 13px;
@@ -1021,7 +1021,7 @@ body {
 
 .project-card {
   background: var(--bg-raised);
-  border: 1px solid rgba(212, 165, 55, 0.25);
+  border: 1px solid rgba(191, 144, 0, 0.5);
   border-radius: var(--radius-lg);
   padding: 20px;
   cursor: pointer;
@@ -1031,7 +1031,7 @@ body {
 }
 
 .project-card:hover {
-  border-color: rgba(212, 165, 55, 0.5);
+  border-color: rgba(191, 144, 0, 0.7);
   box-shadow: 0 4px 24px rgba(13, 148, 136, 0.08);
   transform: translateY(-2px);
 }
