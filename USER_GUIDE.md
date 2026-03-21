@@ -1,9 +1,11 @@
-# SmartPM — User Guide
+# SmartPM — Complete Field-by-Field User Guide
 ## ELV Construction Project Manager
 ### For the Operations Department
 
-**Version:** 2.0 | **Last Updated:** February 20, 2026  
+**Version:** 3.0 | **Last Updated:** March 21, 2026  
 **Application URL:** https://smartpm.pages.dev
+
+> **How to use this guide:** Every input field in the application is documented with **what it is**, **what to enter**, **default value**, and **exactly what it affects** in the system. Fields marked 🔒 are budget-locked and only editable by Admin/Ops Mgr roles.
 
 ---
 
@@ -27,12 +29,14 @@
 16. [Contacts](#16-contacts)
 17. [Documents](#17-documents)
 18. [🤖 AI Assistant](#18--ai-assistant)
-19. [Project Settings](#19-project-settings)
-20. [Managing Users](#20-managing-users)
-21. [Deleting Projects](#21-deleting-projects)
-22. [SmartPlans Import Workflow](#22-smartplans-import-workflow)
-23. [Mobile Access](#23-mobile-access)
-24. [Troubleshooting](#24-troubleshooting)
+19. [Work Breakdown Structure (WBS)](#19-work-breakdown-structure-wbs)
+20. [Daily Status Report](#20-daily-status-report)
+21. [Project Settings](#21-project-settings)
+22. [Managing Users](#22-managing-users)
+23. [Deleting Projects](#23-deleting-projects)
+24. [SmartPlans Import Workflow](#24-smartplans-import-workflow)
+25. [Mobile Access](#25-mobile-access)
+26. [Troubleshooting](#26-troubleshooting)
 
 ---
 
@@ -40,12 +44,14 @@
 
 SmartPM is a full-featured project management application built for ELV (Extra-Low Voltage) construction operations. It handles everything from import of AI-generated estimates (from SmartPlans) to day-to-day project tracking, billing, change orders, RFIs, and infrastructure budget management.
 
-### What's New in Version 2.0
+### What's New in Version 3.0
 
+- **📊 Work Breakdown Structure (WBS)** — Phase/Location/Task hierarchy with budget tracking
+- **📊 Daily Status Report** — Auto-generated project reports with email and clipboard support
 - **🤖 AI Assistant** — Six AI-powered analysis features driven by Gemini 3.1 Pro
 - **AI Intelligence Hub** — Central dashboard card on every project overview
 - **AI Buttons** — One-click AI analysis available directly on SOV, Change Orders, RFIs, Daily Log, and Punch List pages
-- **Dedicated AI Page** — Full AI Assistant hub accessible from the sidebar navigation
+- **🔒 Budget Lock Policy** — PM-restricted editing on budget fields with field-by-field access control
 
 ### Key Features
 
@@ -75,14 +81,35 @@ SmartPM is a full-featured project management application built for ELV (Extra-L
 
 ### Logging In
 
-| Field | What to Enter |
+#### Field: Username
+
+| Detail | Info |
 |---|---|
-| **Username** | Your assigned username (provided by Admin) |
-| **Password** | Your password |
+| **Field Type** | Text input |
+| **Required?** | YES |
+| **What to Enter** | Your assigned username: `admin`, `opsmgr`, `pm`, or `3d` |
 
-Click **Sign In** to access the dashboard.
+**What This Affects:**
+- Determines your **role** (Admin, Ops Mgr, PM, or Viewer/3D) which controls every permission in the system
+- Your display name appears in the **top-right header** on every page
+- Your role badge (colored label) appears next to your name
+- Controls which buttons, tabs, and edit forms are visible throughout the entire application
 
-> **🔒 Note:** SmartPM requires authentication. Contact your Admin if you don't have credentials.
+#### Field: Password
+
+| Detail | Info |
+|---|---|
+| **Field Type** | Password input (masked) |
+| **Required?** | YES |
+| **Minimum Length** | 8 characters |
+| **Submit** | Click "Sign In" button or press Enter |
+
+**What This Affects:**
+- Authenticates you against the Cloudflare D1 database
+- On success: Sets a session token (stored in memory) and loads the Dashboard
+- On failure: Shows red error message "Invalid credentials" — no lockout, unlimited retries
+
+> **🔒 Note:** SmartPM requires authentication. Contact your Admin if you don't have credentials. Default passwords are set during deployment — ask your Admin for yours.
 
 ### Device Compatibility
 
@@ -92,7 +119,7 @@ SmartPM is a responsive web application accessible from:
 - ✅ iPad / Tablet
 - ✅ iPhone / Android phone
 
-No software installation is required. All data is stored securely in the cloud and synchronized in real time.
+No software installation is required. All data is stored securely in Cloudflare D1 (cloud database) and synchronized in real time.
 
 ---
 
@@ -175,49 +202,159 @@ At the top, summary metrics show:
 
 ### Option A: Create Manually
 
-1. Click **+ New Project** on the Dashboard
+1. Click **+ New Project** on the Dashboard (Admin/Ops Mgr only)
 2. Fill in the project form:
 
-| Field | Required | Description |
-|---|---|---|
-| Project Name | ✅ | Official project name |
-| Project Number | ❌ | Internal reference number |
-| Client | ❌ | Customer/GC name |
-| Contract Value | ❌ | Total contract amount |
-| Status | ✅ | Bidding, Pre-Construction, Active, On Hold, Completed |
-| Start Date | ❌ | Project start date |
-| End Date | ❌ | Expected completion date |
-| Description | ❌ | Project notes |
+#### Field: Project Name *
+
+| Detail | Info |
+|---|---|
+| **Field Type** | Text input |
+| **Required?** | YES — form will not submit without it |
+| **Placeholder** | `e.g. ABC Office Tower ELV` |
+
+**What This Affects:**
+- Displayed as the **project card title** on the Dashboard
+- Shown in the **sidebar label** when inside the project
+- Appears in the **page header** on the Project Overview
+- Used as the **subject line** in Daily Status Report emails
+- Included in all **AI analysis** reports as the project identifier
+
+#### Field: Project Number
+
+| Detail | Info |
+|---|---|
+| **Field Type** | Text input |
+| **Required?** | No |
+| **Placeholder** | `e.g. 2026-031` |
+
+**What This Affects:**
+- Shown as `#2026-031` next to the project name on the Dashboard card and Overview page
+- Used as an internal reference — does NOT affect any calculations
+
+#### Field: Status
+
+| Detail | Info |
+|---|---|
+| **Field Type** | Dropdown select |
+| **Default** | `Active` (pre-selected) |
+| **Options** | Bidding, Awarded, Active, On Hold, Punch List, Closeout, Complete |
+
+**What This Affects:**
+- Controls the **colored status badge** on the project card (green for Active, yellow for On Hold, etc.)
+- **Dashboard "Active Projects" count** only includes projects with status `Active` or `Punch List`
+- **Delete button** only appears on projects with `Complete` status (Admin only)
+- AI Budget Forecasting uses project status to determine **remaining duration estimates**
+
+#### Field: Project Type
+
+| Detail | Info |
+|---|---|
+| **Field Type** | Dropdown select |
+| **Default** | None selected |
+| **Options** | New Construction, Renovation, Tenant Improvement, Design Build, Service |
+
+**What This Affects:**
+- Displayed on the Project Overview subtitle
+- Used by AI Assistant for **context-aware analysis** (e.g., renovation projects get different RFI suggestions than new construction)
+
+#### Field: Contract Value ($)
+
+| Detail | Info |
+|---|---|
+| **Field Type** | Number input (step 0.01) |
+| **Default** | `0.00` |
+| **What to Enter** | The total contracted dollar amount for this project |
+
+**What This Affects:**
+- Sets BOTH `original_contract_value` AND `current_contract_value` simultaneously
+- Displayed on the **Dashboard project card** as "Contract"
+- Displayed on **Project Overview** as "Original Contract" and "Current Contract" metric cards
+- Used to calculate **"Remaining"** = Contract Value − Total Billed
+- Used to calculate **% Complete** progress bar = Total Billed ÷ Contract Value
+- **Dashboard "Total Contract Value"** sums this across all projects
+- SOV Balance check compares **Total Scheduled** against this value
+- AI Budget Forecasting uses this as the **budget baseline** for EAC calculations
+
+#### Field: Client Name
+
+| Detail | Info |
+|---|---|
+| **Field Type** | Text input |
+| **What to Enter** | The end-client or building owner's company name |
+
+**What This Affects:**
+- Shown on the **Project Overview** details card as "Client"
+- Used in the **Daily Status Report** header
+
+#### Field: GC Name
+
+| Detail | Info |
+|---|---|
+| **Field Type** | Text input |
+| **What to Enter** | The general contractor's company name |
+
+**What This Affects:**
+- Shown on the **Project Overview** details card as "GC"
+- Displayed on Dashboard project cards next to the client name
+
+#### Fields: Address, City, State
+
+| Detail | Info |
+|---|---|
+| **Field Type** | Text inputs |
+| **What to Enter** | The physical job site location |
+
+**What These Affect:**
+- Shown on the **Project Overview** details card as "Location"
+- Used by AI for **jurisdiction-aware** analysis (e.g., California prevailing wage considerations)
 
 3. Click **Save** to create the project
+
+---
 
 ### Option B: Import from SmartPlans (Recommended)
 
 This is the primary workflow. The Estimating Department creates an estimate in SmartPlans and gives you the JSON export file.
 
-1. Click **📦 Import from SmartPlans** on the Dashboard
-2. Click **📁 Choose JSON File**
-3. Select the `.json` file provided by the Estimating team
-4. Review the **Import Preview** showing:
-   - Project name, type, location
-   - Disciplines selected
-   - Pricing tier
-   - Number of RFIs
-5. Click **✓ Import Project**
-6. SmartPM creates the project and navigates you to the Project Overview
+#### Step 1: Click **📦 Import from SmartPlans** on the Dashboard
 
-### What Gets Imported
+#### Step 2: File Selection
 
-| SmartPlans Data | SmartPM Destination |
+| Detail | Info |
 |---|---|
-| Project name, type, location | Project metadata |
-| AI analysis & pricing config | Project reference data |
-| Selected RFIs | RFIs module (pre-populated) |
-| SOV line items | Schedule of Values |
-| MDF/IDF rooms | Infrastructure locations |
-| Equipment per room | Infrastructure items with locked budgets |
-| Cable runs | Infrastructure cable runs |
-| Unit costs & quantities | Budgeted cost fields (🔒 locked) |
+| **Field Type** | File input (click "📁 Choose JSON File") |
+| **Accepted Format** | `.json` only — must be a SmartPlans export (v2.0 or v3.0) |
+| **Validation** | File must contain `_meta.format === 'smartplans-export'` or it's rejected |
+
+#### Step 3: Review Import Preview
+
+After selecting a valid file, a preview card appears showing:
+- **Project name, type, location** — from the SmartPlans project settings
+- **Disciplines** — which LV systems were included (Cabling, Access, CCTV, Fire)
+- **Pricing Tier** — the material tier used (Budget, Mid, Premium)
+- **Contract Value** — from the `financials.grandTotal` field
+- **SOV Categories** — number of BOM categories that become SOV line items
+- **MDF/IDF Locations** — number of infrastructure rooms
+- **WBS Phases** — number of work breakdown phases
+- **RFIs selected** — count of AI-generated RFIs included
+
+#### Step 4: Click **✓ Import Project**
+
+**What Gets Created (all at once):**
+
+| SmartPlans Data | SmartPM Destination | Editable By PM? |
+|---|---|---|
+| Project name, type, location | Project metadata | No (Settings) |
+| `financials.grandTotal` | Contract Value (original + current) | No |
+| `financials.categories[]` | SOV line items with material/labor breakdown | No |
+| `infrastructure.locations[]` | Infrastructure MDF/IDF rooms | No |
+| Equipment per room | Infrastructure items with 🔒 locked budgets | Installed Qty + Actual Cost only |
+| Cable runs per room | Infrastructure cable runs with 🔒 locked lengths | Installed Length + Actual Hours only |
+| Unit costs & quantities | Budgeted cost fields (🔒 locked) | No |
+| `workBreakdown.phases[]` | WBS task tree (Phase → Location → Task) | Progress + Actuals only |
+| `rfis.items[]` (selected) | RFI module pre-populated entries | Yes |
+| `project.disciplines` | Discipline tags on project card | No |
 
 ---
 
@@ -259,85 +396,130 @@ The Overview page displays:
 
 ## 7. Infrastructure Module (MDF/IDF)
 
-The Infrastructure module is where you manage telecom rooms and their contents. This is where AI-imported budgets from SmartPlans live.
+The Infrastructure module is the **core of SmartPM's field tracking**. This is where AI-imported budgets from SmartPlans live, and where PMs track what's actually installed vs. what was estimated.
 
 ### Infrastructure Dashboard
 
 When you click **🏢 Infrastructure** in the sidebar, you see:
 
-#### Project-Level Totals
-- **Total Locations** — Number of MDF/IDF/TR rooms
-- **MDF/IDF/TR Count** — Breakdown by room type
-- **Budget Health** — Overall traffic light status (🟢🟡🔴)
-- **Material Budget vs Actual** — With colored progress bar
-- **Labor Budget vs Actual** — With colored progress bar
+#### Project-Level Metric Cards (Auto-Calculated — No Inputs)
+| Metric Card | What It Shows | How It's Calculated |
+|---|---|---|
+| **Overall Health** 🟢🟡🔴 | Combined budget status | Worst of material or labor health |
+| **Locations** | `X MDF / Y IDF` count | Count of location records by type |
+| **Material 🔒** | `$Actual / $Budgeted (%)` | Sum of all equipment actual_cost vs. budgeted_cost |
+| **Labor 🔒** | `X.X / Y.Y hrs (%)` | Sum of all labor actual_hours vs. budgeted_hours |
+| **Cable Runs Complete** | `X / Y` | Runs with status = tested or labeled vs. total |
 
-#### Location Cards
+#### Location Cards (Click to Open Detail)
 
-Each room appears as a card showing:
-- **Room Name** — e.g., "MDF - Room 101"
-- **Type Badge** — MDF, IDF, or TR
-- **Building / Floor / Room** — Physical location details
-- **Equipment Count** — Number of items in this room
-- **Cable Runs** — Number of cable run records
-- **Budget Health Indicator** — Colored left border + status badge
-- **Material & Labor %** — Progress bars showing actual vs. budget
+Each MDF/IDF room card shows a **colored left border** indicating overall health, with budget progress bars and quick-glance stats for equipment, cable runs, material %, and labor %.
 
-### Location Detail View
+---
 
-Click any location card to open the detail view with three tabs:
+### 7.1 Adding a Location (Admin/Ops Mgr Only)
 
-#### Equipment Tab
-| Column | Description |
+Click **+ Add Location** on the Infrastructure page.
+
+#### Field: Name *
+
+| Detail | Info |
 |---|---|
-| Item | Equipment name (e.g., "48-Port Patch Panel") |
-| Qty | Budgeted quantity |
-| Unit | Unit of measure (ea, ft, lot) |
-| Unit Cost | Per-unit cost |
-| Budgeted Cost | Qty × Unit Cost (🔒 locked for PMs) |
-| Installed Qty | Actual quantity installed (editable by PM) |
-| Actual Cost | Actual cost incurred (editable by PM) |
-| Status | Installation status indicator |
+| **Field Type** | Text input |
+| **Required?** | YES |
+| **Placeholder** | `e.g. MDF-1, IDF-2A` |
 
-#### Cable Runs Tab
-| Column | Description |
+**What This Affects:**
+- Displayed as the **location card title** on the Infrastructure page
+- Shown as the **page header** in the Location Detail view
+- Referenced by AI in Smart RFI drafts and Punch List prioritization
+
+#### Field: Type *
+
+| Detail | Info |
 |---|---|
-| Cable Type | Cat6A, Fiber, Coax, etc. |
-| Destination | Where the cable goes |
-| Budgeted Qty | Feet of cable budgeted |
-| Installed Qty | Feet actually installed |
-| Budgeted Labor Hrs | Hours budgeted for this run |
-| Actual Labor Hrs | Hours actually spent |
-| Status | Progress indicator |
+| **Field Type** | Dropdown select |
+| **Default** | `IDF` |
+| **Options** | MDF, IDF, TR (Telecom Room) |
 
-#### Labor Tab
-| Column | Description |
+**What This Affects:**
+- Controls the **colored type badge** (MDF = blue, IDF = green, TR = amber)
+- Drives the **MDF/IDF count** on the Infrastructure dashboard totals
+- AI analysis treats MDF rooms as **primary hubs** vs. IDF as **branch rooms**
+
+#### Fields: Building, Floor, Room Number
+
+| Detail | Info |
 |---|---|
-| Task | Labor task description |
-| Trade | Worker classification |
-| Budgeted Hours | AI-set budget hours (🔒) |
-| Actual Hours | Hours actually worked |
-| Status | Progress indicator |
+| **Field Type** | Text inputs |
+| **What to Enter** | Physical location identifiers (e.g., "Building A", "2", "101") |
 
-### Adding Items
+**What These Affect:**
+- Displayed below the location name as a subtitle: `Building A · Floor 2 · Rm 101`
+- Used by AI to understand **spatial relationships** between rooms when generating Smart RFIs
+- Helps the Punch List AI prioritize by **floor/area clustering**
 
-Admins/Ops Managers can click the **+ Add** buttons to add:
-- New locations
-- New equipment items
-- New cable runs
-- New labor entries
+---
 
-### Editing Items
+### 7.2 Equipment Tab — Add Equipment (Admin/Ops Mgr Only)
 
-- **PMs** can only edit: Installed Qty, Actual Cost, Actual Hours, Status
-- **Admins/Ops Mgrs** can edit everything including budgeted amounts
-- Click the **✏️** button to open the edit form
+Click **+ Add Equipment** inside a location's Equipment tab.
 
-### Deleting Items
+| Field | Type | Required | What This Affects |
+|---|---|---|---|
+| **Category** | Dropdown (18 options) | YES | Blue category badge in table; AI uses for discipline-specific analysis |
+| **Item Name** | Text | YES | Bolded name in equipment table |
+| **Model / Part #** | Text | No | Shown in "Model" column — reference only |
+| **Unit** | Dropdown: ea / ft / lot / box | No (default: ea) | Displayed next to quantities |
+| **Budgeted Qty 🔒** | Number | Admin only | Multiplied by Unit Cost → Budgeted Cost. Denominator for material health |
+| **Unit Cost ($) 🔒** | Number | Admin only | Combined with Qty → Budgeted Cost. Drives material traffic light |
+| **Status** | Dropdown: Planned→Ordered→Received→Installed→Tested | No (default: Planned) | Status badge color; "Installed" or "Tested" counts toward installed items |
+| **Notes** | Textarea | No | Stored as reference |
 
-- Click the **🗑** button on any item
-- Confirm the deletion when prompted
-- Only Admins and Ops Managers can delete items
+### 7.3 Equipment Tab — Edit Equipment (PM and Above)
+
+PMs see a **restricted modal** with read-only budget info (🔒 Budget Qty, 🔒 Unit Cost, 🔒 Budget Cost), then these editable fields:
+
+| Field | What to Enter | What This Affects |
+|---|---|---|
+| **Installed Qty** | Units physically installed | Shown in "Installed" column |
+| **Actual Cost ($)** | Dollar amount actually spent | Material health: 🟢 <80%, 🟡 80-100%, 🔴 >100% of budget. Rolls up to location and project totals |
+| **Status** | Current installation status | Status badge updates |
+
+### 7.4 Cable Runs Tab — Add Cable Run (Admin/Ops Mgr Only)
+
+| Field | Type | Required | What This Affects |
+|---|---|---|---|
+| **Run Label** | Text | No | Bolded identifier in cable table (e.g., "D-101") |
+| **Cable Type** | Dropdown (15 types) | YES | Purple type badge; AI uses for cable-specific analysis |
+| **Destination** | Text | YES | Where the cable terminates |
+| **Dest. Floor** | Text | No | Shown in parentheses after destination |
+| **Pathway** | Dropdown (7 types) | No | Reference — shown in Pathway column |
+| **Budgeted Length (ft) 🔒** | Number | Admin only | Rolls up to "Budgeted Cable ft" total |
+| **Budgeted Labor (hrs) 🔒** | Number | Admin only | Denominator in run-level labor health |
+
+### 7.5 Cable Runs Tab — Edit Cable Run (PM and Above)
+
+| Field | What to Enter | What This Affects |
+|---|---|---|
+| **Installed Length (ft)** | Feet of cable actually pulled | Rolls up to "Installed Cable ft" metric |
+| **Actual Labor (hrs)** | Hours spent on this run | Labor health: 🟢🟡🔴. Rolls up to location and project labor |
+| **Status** | Planned→Pulled→Terminated→Tested→Labeled | "Tested" or "Labeled" counts toward "Cable Runs Complete" |
+
+### 7.6 Labor Tab — Add Labor Entry (PM and Above)
+
+| Field | Type | Required | What This Affects |
+|---|---|---|---|
+| **Task Type** | Dropdown (12 types) | YES | Amber task badge in table |
+| **Date** | Date picker (default: today) | No | Display; scanned by AI Daily Log Summary |
+| **Description** | Text | No | Shown in table; used by AI for context |
+| **Crew Size** | Number (default: 1) | No | Stored for reference |
+| **Budgeted Hours 🔒** | Number | Admin only | Denominator in per-entry labor health |
+| **Actual Hours** | Number (default: 0) | No | Per-entry labor health; rolls up to location and project totals |
+| **Notes** | Textarea | No | Stored as reference |
+
+> **🔒 Budget Lock Policy:** All fields marked 🔒 are set from SmartPlans AI analysis during import. Only Admin/Ops Mgr can modify budget fields. PMs can only update installed quantities, actual costs/hours, and status. This separation keeps budget accountability clear — the estimator's numbers remain the baseline, and PMs track reality against them.
+
 
 ---
 
@@ -392,265 +574,338 @@ If ratio > 1.00 → 🔴 Red
 
 ## 9. Schedule of Values (SOV)
 
-### Purpose
-
 The Schedule of Values tracks AIA G703-format line items used for progress billing. Each line item represents a portion of the contract value.
 
-### SOV Dashboard
-
-Top metrics show:
-- **Total Scheduled** — Sum of all line item values
-- **Contract Value** — The project's contract amount
-- **Balanced / Difference** — Whether the SOV matches the contract value
+### SOV Dashboard Metrics (Auto-Calculated)
+| Metric | What It Shows |
+|---|---|
+| **Total Scheduled** | Sum of all SOV line item scheduled values |
+| **Contract Value** | The project's current contract amount |
+| **Balanced / Difference** | ✅ if Total Scheduled = Contract Value; ⚠️ shows gap amount if not |
 
 ### AI Feature: SOV Progress Validation
 
-The SOV page includes an **🤖 AI Validate Progress** button in the page header. Click it to have Gemini 3.1 Pro cross-reference your reported completion percentages against daily log evidence. See [Section 18.6](#186-sov-progress-validation) for details.
+Click **🤖 AI Validate Progress** to have Gemini 3.1 Pro cross-reference your reported completion percentages against daily log evidence. See [Section 18.6](#186-sov-progress-validation).
 
-### SOV Table Columns
+### Adding SOV Line Items
 
-| Column | Description |
-|---|---|
-| Item # | Line item number (e.g., "27-001") |
-| Description | What this line item covers |
-| Division | Division 27, 28, Special Conditions, etc. |
-| Scheduled Value | Dollar amount for this line item |
-| Material | Material portion of the value |
-| Labor | Labor portion of the value |
-| % Complete | Current completion percentage |
-| Actions | Edit ✏️ and Delete 🗑 buttons |
+Click **+ Add Line Item** — all fields below:
 
-### Adding SOV Items
+| Field | Type | Required | What This Affects |
+|---|---|---|---|
+| **Item Number** | Text | YES | Identifier in SOV table (e.g., "27-001") |
+| **Division** | Dropdown: Div 27, Div 28, Special Conditions, General Conditions | No | Shown in Division column; used by AI for category grouping |
+| **Description** | Text | YES | Main description in SOV table |
+| **Material Cost ($)** | Number | No (default: 0) | Material portion of scheduled value |
+| **Labor Cost ($)** | Number | No (default: 0) | Labor portion of scheduled value |
+| **Equipment Cost ($)** | Number | No (default: 0) | Equipment portion |
+| **Subcontractor ($)** | Number | No (default: 0) | Subcontractor portion |
 
-1. Click **+ Add Line Item**
-2. Fill in:
-   - Item Number (e.g., "27-001")
-   - Division (dropdown)
-   - Description
-   - Material Cost
-   - Labor Cost
-   - Equipment Cost
-   - Subcontractor Cost
-3. Click **Save**
+**What Saving Affects:**
+- **Scheduled Value** = Material + Labor + Equipment + Subcontractor (auto-calculated)
+- Adds to **Total Scheduled** metric — if this doesn't match Contract Value, the balance card turns red
+- Each line item becomes a row in **Progress Billing** periods
+- AI **Budget Forecasting** and **SOV Validation** analyze these items
 
-> **💡 Note:** SOV items are automatically created when importing from SmartPlans.
+### Editing SOV Items
+
+Click ✏️ on any row. Same fields as Add, plus:
+
+| Field | What to Enter | What This Affects |
+|---|---|---|
+| **% Complete** | Current completion percentage (0-100) | Displayed in table; used to calculate total completed value in billing |
+
+> **💡 Note:** SOV items are **auto-created** when importing from SmartPlans. The `financials.categories` array maps directly to SOV line items with material/labor breakdowns.
 
 ---
 
 ## 10. Progress Billing
 
-### Purpose
-
-Track payment applications per billing period (typically monthly), aligned with the SOV.
+Track AIA G702/G703 payment applications per billing period.
 
 ### Creating a Billing Period
 
-1. Click **+ New Billing Period**
-2. Enter period number and date range
-3. For each SOV line item, enter:
-   - Work completed this period
-   - Materials stored this period
-4. The system calculates:
-   - Total completed to date
-   - Retainage
-   - Amount due this period
+Click **+ New Billing Period** — a period is auto-numbered sequentially (#1, #2, #3...).
+
+### Viewing a Billing Period
+
+Click **View** on any period to open the billing detail modal.
+
+#### Period-Level Metrics (Auto-Calculated)
+| Metric | How It's Calculated |
+|---|---|
+| **Contract Sum** | Same as project contract value |
+| **Completed** | Sum of all line items' total completed values |
+| **Payment Due** | Completed − Less Previous Payments |
+
+#### Field: Status
+
+| Detail | Info |
+|---|---|
+| **Options** | Draft → Submitted → Approved → Paid |
+
+**What This Affects:** Status badge on the billing periods table
+
+#### Per-Line-Item Fields (one row per SOV item):
+
+| Field | What to Enter | What This Affects |
+|---|---|---|
+| **% Complete** | Overall completion for this SOV item to date | Multiplied by Scheduled Value → Total Completed Value |
+| **This Period ($)** | Dollar amount of work performed THIS billing period | Tracked for the current pay application |
+
+**What Saving the Period Affects:**
+- Updates **Total Billed** on the project (displayed on Dashboard card and Overview metrics)
+- Drives the **Project Progress Bar** (Total Billed ÷ Contract Value)
+- Feeds into AI **Budget Forecasting** for cash flow projections
+- Updates **Dashboard "Total Billed"** aggregate
 
 ---
 
 ## 11. Change Orders
 
-### Purpose
-
 Document scope changes, additions, or deductions with cost and schedule impact.
 
 ### AI Feature: Change Order Impact Analysis
 
-The Change Orders page includes an **🤖 AI Impact Analysis** button in the page header. Click it to have Gemini 3.1 Pro evaluate all change orders and analyze their cumulative financial and schedule impact. See [Section 18.3](#183-change-order-impact-analysis) for details.
+Click **🤖 AI Impact Analysis** to evaluate cumulative financial and schedule impact. See [Section 18.3](#183-change-order-impact-analysis).
 
-### Change Order Fields
-
-| Field | Description |
+### Summary Metrics (Auto-Calculated)
+| Metric | What It Shows |
 |---|---|
-| CO Number | Sequential change order number |
-| Title | Brief title for the change |
-| Type | Addition, Deduction, or No-cost change |
-| Description | What changed and why |
-| Amount | Dollar value (positive = addition, negative = deduction) |
-| Status | Pending, Approved, Rejected |
-| Date Requested | When the CO was submitted |
-| Actions | Edit ✏️ and Delete 🗑 buttons |
+| **Pending** | Count of COs with status = pending |
+| **Approved** | Count of COs with status = approved |
+| **Approved Value** | Sum of approved CO total amounts |
+| **Pending Value** | Sum of pending CO total amounts |
 
-### Change Order Summary Metrics
+### Adding a Change Order
 
-At the top of the page:
-- **Total COs** — Number of change orders
-- **Approved Amount** — Sum of approved COs
-- **Pending Amount** — Sum of pending COs
-- **Net Change** — Impact on contract value
+Click **+ New Change Order**:
 
-### Creating a Change Order
+| Field | Type | Required | What This Affects |
+|---|---|---|---|
+| **Title** | Text | YES | Shown in CO table and used by AI analysis |
+| **Type** | Dropdown: Addition / Deduction / No Cost | No (default: Addition) | Deductions show in red in the table |
+| **Requested By** | Text | No | Reference — who initiated the change |
+| **Material ($)** | Number | No (default: 0) | Material cost component |
+| **Labor ($)** | Number | No (default: 0) | Labor cost component |
+| **Equipment ($)** | Number | No (default: 0) | Equipment cost component |
+| **Markup %** | Number | No (default: 25) | Applied on top of subtotal: Total = Subtotal + (Subtotal × Markup%) |
+| **Schedule Impact (days)** | Number | No (default: 0) | Tracked for schedule analysis; used by AI CO Impact Analysis |
+| **Description** | Textarea | No | Detailed explanation; analyzed by AI |
 
-1. Click **+ New Change Order**
-2. Fill in the details
-3. Click **Save**
-4. Update status as the CO moves through approval
+**What Saving Affects:**
+- **Total Amount** = (Material + Labor + Equipment) × (1 + Markup%) — auto-calculated
+- Approved COs adjust the **Current Contract Value** on the project
+- Pending COs are highlighted in the CO summary metrics
+- AI **CO Impact Analysis** evaluates cumulative effect of all COs
+
+### Editing a Change Order
+
+Same fields as Add, plus:
+
+| Field | What This Affects |
+|---|---|
+| **Status** (Pending / Submitted / Approved / Rejected) | Approved COs count toward "Approved Value" total |
+| **Approved Date** | Reference — when the CO was approved |
+| **Approved By** | Reference — who approved |
+| **Notes** | Additional detail for the CO log |
 
 ---
 
 ## 12. RFIs
 
-### Purpose
-
 Track Requests for Information submitted to the GC, architect, or engineer.
 
 ### AI Feature: Smart RFI Drafting
 
-The RFIs page includes an **🤖 AI Smart RFIs** button in the page header. Click it to have Gemini 3.1 Pro analyze your project data and automatically draft professional RFI questions. See [Section 18.2](#182-smart-rfi-drafting) for details.
+Click **🤖 AI Smart RFIs** to have Gemini 3.1 Pro draft professional RFI questions based on project data. See [Section 18.2](#182-smart-rfi-drafting).
 
-### RFI Fields
-
-| Field | Description |
+### Summary Metrics (Auto-Calculated)
+| Metric | What It Shows |
 |---|---|
-| RFI Number | Sequential reference number |
-| Subject | Brief topic of the question |
-| Discipline | Relevant trade discipline |
-| Question | The formal question being asked |
-| Priority | Low, Medium, High, Critical |
-| Status | Open, Answered, Closed |
-| Response | Answer received |
-| Due Date | Response deadline |
-| Actions | Edit ✏️ and Delete 🗑 buttons |
+| **Open** | RFIs with status = draft or submitted |
+| **Responded** | RFIs with status = responded |
+| **Closed** | RFIs with status = closed |
+| **Overdue** | RFIs past due_date with status ≠ closed |
 
-### RFI Summary Metrics
+### Adding an RFI
 
-At the top of the page:
-- **Total RFIs** — Total number of RFIs
-- **Open** — RFIs awaiting response
-- **Answered** — RFIs with responses received
-- **Overdue** — RFIs past their due date
+Click **+ New RFI**:
 
-### Pre-Imported RFIs
+| Field | Type | Required | What This Affects |
+|---|---|---|---|
+| **Subject** | Text | YES | Shown as the RFI title in the table |
+| **Question** | Textarea | YES | The formal question being asked; analyzed by AI |
+| **Discipline** | Dropdown: Structured Cabling / Fire Alarm / CCTV / Access Control / Audio Visual / Intrusion Detection | No | Shown in table; AI groups by discipline |
+| **Priority** | Dropdown: Low / Normal / High / Critical | No (default: Normal) | Badge color: Critical = red, High = amber, Normal = blue |
+| **Submit To** | Text | No | Architect/Engineer name — reference |
+| **Due Date** | Date picker | No | If past due and not closed, shown in **red** in table; counts toward "Overdue" metric |
 
-When you import from SmartPlans, selected RFIs from the estimating phase are automatically loaded into this module. These are common industry-standard questions that the AI identified as needing clarification.
+### Editing an RFI
+
+Same fields as Add, plus a **Response** section:
+
+| Field | What This Affects |
+|---|---|
+| **Status** (Draft / Submitted / Responded / Closed) | Drives the summary metric counts |
+| **Response** | The answer received — analyzed by AI for CO/schedule implications |
+| **Responded By** | Who provided the answer |
+| **Response Date** | When the answer was received |
+| **Cost Impact?** (Yes/No) | Flags this RFI as having cost implications |
+| **Schedule Impact?** (Yes/No) | Flags this RFI as having schedule implications |
+
+
+> **💡 Pre-Imported RFIs:** When you import from SmartPlans, selected RFIs from the estimating phase are automatically loaded into this module. These are industry-standard questions that the AI identified as needing clarification. You can edit, respond to, or close them as answers come in.
 
 ---
 
 ## 13. Submittals
 
-### Purpose
+Track product submittal packages sent for architect/engineer approval.
 
-Track product submittal packages sent for engineer approval.
+### Adding a Submittal
 
-### Submittal Fields
+Click **+ New Submittal**:
 
-| Field | Description |
-|---|---|
-| Number | Submittal reference number |
-| Description | Product/system being submitted |
-| Spec Section | Relevant specification section |
-| Status | Pending, Approved, Approved as Noted, Rejected, Resubmit |
-| Date | Submitted/approval dates |
-| Actions | Edit ✏️ and Delete 🗑 buttons |
+| Field | Type | Required | What This Affects |
+|---|---|---|---|
+| **Title** | Text | YES | Shown as submittal name in table |
+| **Spec Section** | Text | No | e.g., "27 10 00" — shown in Spec column |
+| **Category** | Dropdown: Product Data / Shop Drawings / Samples / Test Reports / Certificates | No (default: Product Data) | Reference classification |
+| **Due Date** | Date picker | No | Shown in "Due" column |
+| **Description** | Textarea | No | Additional detail |
+
+### Editing a Submittal
+
+Same fields as Add, plus:
+
+| Field | Type | What This Affects |
+|---|---|---|
+| **Status** | Dropdown: In Preparation / Submitted / Approved / Approved As Noted / Revise Resubmit / Rejected / Closed | Status badge in table |
+| **Submitted Date** | Date | When the package was sent to the engineer |
+| **Returned Date** | Date | When the response came back |
+| **Revision** | Number (default: 0) | "Rev 0", "Rev 1" shown in table — increment when resubmitting |
+| **Notes** | Textarea | Engineer comments, action items |
 
 ---
 
 ## 14. Daily Log
 
-### Purpose
-
-Record daily field reports including weather, crew, activities, and issues.
+Record daily field reports — this is the **primary data source for AI analysis**.
 
 ### AI Feature: AI Progress Report
 
-The Daily Log page includes an **🤖 AI Progress Report** button in the page header. Click it to have Gemini 3.1 Pro analyze all your log entries and generate a comprehensive progress summary. See [Section 18.1](#181-ai-daily-log-summary) for details.
+Click **🤖 AI Progress Report** to generate a comprehensive summary of daily logs. See [Section 18.1](#181-ai-daily-log-summary).
 
-### Daily Log Fields
+### Adding a Daily Log Entry
 
-| Field | Description |
+Click **+ New Entry**:
+
+| Field | Type | Required | What This Affects |
+|---|---|---|---|
+| **Date** | Date picker | YES | Default: today — shown in Date column; AI groups entries by date range |
+| **Weather** | Dropdown: Clear / Partly Cloudy / Cloudy / Rain / Snow / Wind | No (default: Clear) | Shown in Weather column; AI tracks weather-related delays |
+| **Crew Size** | Number (default: 0) | No | Shown in "Crew" column; AI calculates **crew productivity rates** = work output ÷ crew × hours |
+| **Hours Worked** | Number (default: 8, step: 0.5) | No | Shown in "Hours" column; AI uses for productivity analysis and total man-hours tracking |
+| **Work Performed** | Textarea | No | **MOST IMPORTANT FIELD** — describe what was done in detail. AI analyzes this for progress tracking, area completion, and recommendations |
+| **Areas Worked** | Text | No | Floors, rooms, areas — helps AI map work to infrastructure locations |
+| **Delays / Issues** | Textarea | No | AI flags delay patterns (weather, materials, subcontractor) in Progress Reports |
+
+### Editing a Daily Log Entry
+
+Same fields as Add, plus:
+
+| Field | What This Affects |
 |---|---|
-| Date | Report date |
-| Weather | Conditions (Clear, Rain, Snow, etc.) |
-| Temperature | High/Low for the day |
-| Crew Count | Number of workers on site |
-| Hours Worked | Total field hours for the day |
-| Activities | Work performed today |
-| Issues | Problems encountered |
-| Visitors | Notable visitors to the site |
-| Safety Notes | Safety observations or incidents |
-| Actions | Edit ✏️ and Delete 🗑 buttons |
+| **Safety Incidents** | Textarea — AI includes safety analysis in Progress Reports; flags repeated patterns |
 
-### Best Practices for Daily Logs
-
-- Log entries **every day** work occurs on site
-- Be specific about **activities** — mention room numbers, equipment installed, cable pulled
-- Note **crew count and hours** accurately — the AI uses this for productivity analysis
-- Record **all delays** with reasons — weather, material delivery, subcontractor issues
-- Include **safety notes** — the AI flags safety patterns in progress reports
-
-> **💡 Pro Tip:** The more detailed your daily log entries, the better the AI Progress Report will be. The AI uses your logs to calculate crew productivity rates, identify delay patterns, and generate accurate recommendations.
+> **💡 Pro Tip:** The more detailed your daily log entries, the better the AI Progress Report will be. Mention **specific room numbers**, **equipment types installed**, **cable footage pulled**, and **delay reasons**. The AI uses this to calculate crew productivity, identify patterns, and generate actionable recommendations.
 
 ---
 
 ## 15. Punch List
 
-### Purpose
-
 Track deficiency items identified during walkthrough inspections.
 
 ### AI Feature: Punch List Prioritization
 
-The Punch List page includes an **🤖 AI Priority Plan** button in the page header. Click it to have Gemini 3.1 Pro rank your punch items by criticality and generate a day-by-day resolution plan. See [Section 18.4](#184-punch-list-prioritization) for details.
+Click **🤖 AI Priority Plan** to rank items by criticality and generate a day-by-day resolution plan. See [Section 18.4](#184-punch-list-prioritization).
 
-### Punch List Fields
-
-| Field | Description |
+### Summary Metrics (Auto-Calculated)
+| Metric | What It Shows |
 |---|---|
-| Item # | Sequential item number |
-| Location | Where the deficiency is located |
-| Description | What needs to be corrected |
-| Discipline | Relevant trade (Electrical, Fire Alarm, etc.) |
-| Priority | Low, Medium, High |
-| Status | Open, In Progress, Completed, Verified |
-| Assigned To | Who is responsible for the fix |
-| Due Date | Deadline for correction |
-| Actions | Edit ✏️ and Delete 🗑 buttons |
+| **Open** | Items with status = open |
+| **In Progress** | Items currently being worked |
+| **Complete** | Items with status = complete or verified |
+| **Progress %** | (Complete + Verified) ÷ Total Items |
 
-### Punch List Summary Metrics
+### Adding a Punch Item
 
-At the top of the page:
-- **Total Items** — Number of punch items
-- **Open** — Items not yet started
-- **In Progress** — Items being worked on
-- **Completed** — Items fixed and verified
+Click **+ Add Item**:
+
+| Field | Type | Required | What This Affects |
+|---|---|---|---|
+| **Location** | Text | YES | Room, floor, area — shown in Location column; AI uses for clustering |
+| **Priority** | Dropdown: Low / Normal / High | No (default: Normal) | Badge color: High = red, Normal = amber, Low = blue |
+| **Description** | Textarea | YES | What needs correction — AI analyzes for criticality tier assignment |
+| **Discipline** | Text | No | Relevant trade — AI groups by discipline |
+| **Assigned To** | Text | No | Who is responsible — AI includes in crew assignment recommendations |
+
+### Editing a Punch Item
+
+Same fields as Add, plus:
+
+| Field | Type | What This Affects |
+|---|---|---|
+| **Status** | Dropdown: Open / In Progress / Complete / Verified | Drives summary metrics and progress % |
+| **Due Date** | Date picker | AI factors into resolution timeline |
+| **Completed Date** | Date picker | Tracked for closeout documentation |
+| **Verified By** | Text | Who confirmed the fix — audit trail |
+| **Notes** | Textarea | Resolution details |
 
 ---
 
 ## 16. Contacts
 
-### Purpose
+Maintain a project directory of all stakeholders. Contacts are grouped by role.
 
-Maintain a project directory of all stakeholders.
+### Adding a Contact
 
-### Contact Fields
+Click **+ Add Contact**:
 
-| Field | Description |
-|---|---|
-| Name | Full name |
-| Company | Organization |
-| Role | Job title / function |
-| Email | Email address |
-| Phone | Phone number |
-| Notes | Additional information |
+| Field | Type | Required | What This Affects |
+|---|---|---|---|
+| **Name** | Text | YES | Contact name — bolded in directory |
+| **Company** | Text | No | Shown below name |
+| **Role** | Dropdown: Subcontractor / Owner / Architect / Engineer / GC PM / GC Superintendent / Inspector | No (default: Subcontractor) | Contacts grouped by role in the directory view |
+| **Email** | Email | No | Creates a clickable ✉️ mailto: button |
+| **Phone** | Phone | No | Creates a clickable 📞 tel: button |
 
-Contacts can be shared across projects or specific to one project.
+### Editing and Deleting Contacts
+
+- Click ✏️ to edit any field
+- Click 🗑 to delete (with confirmation prompt)
+- Additional role option when editing: **Other**
 
 ---
 
 ## 17. Documents
 
-### Purpose
+A local document register for tracking project files and references. Documents are stored as **metadata references** in localStorage (not uploaded to the cloud).
 
-Reference area for project documentation. Provides a centralized location for file references.
+### Adding a Document
+
+Click **+ Add Document**:
+
+| Field | Type | Required | What This Affects |
+|---|---|---|---|
+| **Title** | Text | YES | Document name in table |
+| **Category** | Dropdown: Drawings / Specs / Submittals / RFI Responses / Correspondence / Photos / Close Out / Other | No (default: Drawings) | Shown in Category column |
+| **Date** | Date picker (default: today) | No | Shown in Date column |
+| **Reference / File Number** | Text | No | e.g., "DWG-E101-R3" — identifier |
+| **Link** | URL | No | If provided, creates a clickable link in the table |
+
+> **⚠️ Note:** Documents are stored in your browser's localStorage. They will not persist if you clear browser data or use a different device.
 
 ---
 
@@ -966,23 +1221,144 @@ Cross-references your reported SOV completion percentages against daily log evid
 
 ---
 
-## 19. Project Settings
+## 19. Work Breakdown Structure (WBS)
 
-> **🔒 Access:** Admin and Ops Manager only
+The WBS module provides **phase-level tracking** of project installation progress. WBS data is auto-created when importing from SmartPlans — the phases, locations, and tasks map directly from the estimate.
 
-### Available Settings
+### WBS Dashboard Metrics (Auto-Calculated)
+| Metric | What It Shows |
+|---|---|
+| **Overall Progress** | Weighted average of all task progress percentages |
+| **Material Health** 🟢🟡🔴  | Total actual material ÷ total budgeted material |
+| **Labor Health** 🟢🟡🔴 | Total actual labor hrs ÷ total budgeted labor hrs |
+| **Tasks Complete** | Count of tasks with status = complete |
 
-- **Project Name** — Update the project name
-- **Project Number** — Internal reference number
-- **Client** — Customer name
-- **Contract Value** — Total contract amount
-- **Status** — Change project status (Active, On Hold, Completed, etc.)
-- **Start/End Dates** — Project timeline
-- **Description** — Project notes
+### WBS Hierarchy
+
+The WBS is a **3-level tree structure**:
+
+```
+Phase (e.g., "Rough In")  ← top level, collapsible
+  └── Location (e.g., "MDF-1")  ← mid level
+       └── Task (e.g., "Install Patch Panels")  ← detail level, editable
+```
+
+### Adding a WBS Task (Admin/Ops Mgr Only)
+
+Click **+ Add Task**:
+
+| Field | Type | Required | What This Affects |
+|---|---|---|---|
+| **WBS Code** | Text | YES | Hierarchical code shown in tree (e.g., "1.2.3") |
+| **Title** | Text | YES | Task name in the WBS tree |
+| **Parent Task** | Dropdown | No | If set, nests this task under the parent. If blank, creates a top-level phase |
+| **Task Type** | Dropdown: Phase / Location / Task | No (default: Task) | Controls the visual level and indentation |
+| **Phase** | Text | No | Phase grouping — used by the phase filter dropdown |
+| **Budgeted Material ($) 🔒** | Number | Admin only | Material budget for this task |
+| **Budgeted Labor (hrs) 🔒** | Number | Admin only | Labor hour budget |
+| **Description** | Textarea | No | Additional context |
+
+**What Saving Affects:**
+- **Budgeted Labor Cost** = Budgeted Labor Hrs × Labor Rate (auto-calculated)
+- **Total Budget** = Budgeted Material + Budgeted Labor Cost
+- Task appears in the WBS tree under its parent
+- Phase filter dropdown updates with new phases
+
+### Editing a WBS Task (PM and Above)
+
+Click ✏️ on any task row. PMs see **read-only budget data** (🔒) plus these editable fields:
+
+| Field | What to Enter | What This Affects |
+|---|---|---|
+| **Installed Qty** | Number of units actually installed | Used to auto-calculate Actual Material Cost if unit costs are defined |
+| **Installed Units** | Unit label (ea, ft, lot) | Display |
+| **Actual Labor Hrs** | Total hours worked on this task | Drives **labor health** for this task: 🟢 <80%, 🟡 80-100%, 🔴 >100% |
+| **Progress %** | Completion percentage (0-100) | Shown in progress bar; drives **overall WBS progress** calculation |
+| **Status** | not_started / in_progress / complete | Progress badge: ⬜ Not Started, 🔄 In Progress, ✅ Complete |
+| **Actual Start Date** | Date picker | When work began on this task |
+| **Actual End Date** | Date picker | When work was completed |
+| **Notes** | Textarea | Status notes |
+
+**What Saving Affects:**
+- **Actual Material Cost** = Installed Qty × Budgeted Unit Cost (auto-calculated from budget data)
+- **Actual Labor Cost** = Actual Labor Hrs × Labor Rate (auto-calculated)
+- Phase-level **progress bar** recalculates as weighted average of child tasks
+- Overall **WBS progress** metric updates on the dashboard
+- Material and labor health metrics update with new actuals
+- AI **Budget Forecasting** uses these actuals for EAC projections
+- **Daily Status Report** includes phase progress table from WBS data
+
+### Phase Filter
+
+Use the **Phase dropdown** at the top to filter the WBS tree by phase (e.g., show only "Trim Out" tasks). Select "All Phases" to see everything.
 
 ---
 
-## 20. Managing Users
+## 20. Daily Status Report
+
+Generate a printable/shareable daily project status report from the Project Overview page.
+
+### How to Generate
+
+1. On the Project Overview page, click **📊 Daily Report** (Admin/Ops Mgr/PM only)
+2. Choose the **report date** and optionally enter an **email address**
+3. Click **Generate Report**
+
+### Input Fields
+
+| Field | Type | What This Affects |
+|---|---|---|
+| **Report Date** | Date picker (default: today) | Shown in report header as "Daily Status Report — [Date]" |
+| **Email** | Email | Pre-populates the "To:" field when clicking "📧 Email Report" |
+
+### What the Report Contains (Auto-Generated)
+
+| Section | Source Data |
+|---|---|
+| **Project Summary** | Contract value, overall progress %, health status, tasks complete |
+| **Budget Status** | Material ($ actual vs budgeted + %), Labor (hrs actual vs budgeted + %) with 🟢🟡🔴 |
+| **Phase Progress** | Every WBS phase with progress %, material $, labor hrs, and status icon |
+| **Infrastructure** | First 15 locations with name, type, equipment count, cable run count |
+
+### Report Actions
+
+| Button | What It Does |
+|---|---|
+| **📋 Copy to Clipboard** | Copies a plain-text version of the report for pasting into email, Teams, etc. |
+| **📧 Email Report** | Opens your default email client with report pre-filled in the body |
+
+---
+
+## 21. Project Settings
+
+> **🔒 Access:** Admin and Ops Manager only
+
+Click **⚙️ Settings** in the project sidebar to open the settings panel.
+
+### Editable Fields
+
+| Field | Type | What This Affects |
+|---|---|---|
+| **Project Name** | Text | Updates the project card title on Dashboard and sidebar label |
+| **Project Number** | Text | Updates the reference number shown next to the project name |
+| **Status** | Dropdown (same 7 options as New Project) | Changes the status badge; "Complete" enables the Delete button |
+| **Project Type** | Dropdown | Updates the type subtitle on the Overview |
+| **Client Name** | Text | Updates the "Client" field on Overview |
+| **GC Name** | Text | Updates the "GC" field on Overview and Dashboard card |
+| **Original Contract ($)** | Number | This is the LOCKED original bid amount — usually not changed |
+| **Current Contract ($)** | Number | The adjusted value after approved COs — drives all financial calculations |
+| **Retainage %** | Number (default: 10) | Used in billing calculations: Amount Retained = Completed × Retainage% |
+| **Address, City, State** | Text | Updates location on Overview |
+| **Bid Date** | Date | Reference date |
+| **Award Date** | Date | Reference date |
+| **Start Date** | Date | Used by AI for schedule analysis |
+| **Substantial Completion** | Date | Used by AI for schedule analysis and CO schedule impact |
+| **Final Completion** | Date | Reference date |
+| **Description** | Textarea | Project notes — shown on Overview |
+
+---
+
+## 22. Managing Users
 
 > **🔒 Access:** Admin and Ops Manager only
 
@@ -1006,7 +1382,7 @@ Cross-references your reported SOV completion percentages against daily log evid
 
 ---
 
-## 21. Deleting Projects
+## 23. Deleting Projects
 
 > **🔒 Access:** Admin only, Completed projects only
 
@@ -1019,7 +1395,7 @@ Cross-references your reported SOV completion percentages against daily log evid
 
 ---
 
-## 22. SmartPlans Import Workflow
+## 24. SmartPlans Import Workflow
 
 This section describes the end-to-end handoff from Estimating to Operations.
 
@@ -1079,7 +1455,7 @@ ESTIMATING DEPARTMENT                    OPERATIONS DEPARTMENT
 
 ---
 
-## 23. Mobile Access
+## 25. Mobile Access
 
 SmartPM works on mobile devices through the browser. Here are tips for mobile use:
 
@@ -1104,7 +1480,7 @@ Field PMs commonly use mobile to:
 
 ---
 
-## 24. Troubleshooting
+## 26. Troubleshooting
 
 ### Login Issues
 
@@ -1194,4 +1570,4 @@ For technical issues with SmartPM, contact your IT administrator or the developm
 
 ---
 
-*SmartPM v2.0 is a 3D Technology Services, Inc. proprietary application. Built for the Operations Department to manage ELV construction projects with AI-powered budget intelligence from SmartPlans and intelligent project analysis from Gemini 3.1 Pro.*
+*SmartPM v3.0 is a 3D Technology Services, Inc. proprietary application. Built for the Operations Department to manage ELV construction projects with AI-powered budget intelligence from SmartPlans and intelligent project analysis from Gemini 3.1 Pro.*
