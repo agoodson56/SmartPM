@@ -207,11 +207,20 @@ const App = {
 
   async deleteProject(id, name) {
     if (!this.Permissions.can('canDeleteProject')) { this.toast('You do not have permission to delete projects', 'error'); return; }
-    if (!confirm(`Are you sure you want to delete "${name}"? This cannot be undone.`)) return;
-    const res = await API.deleteProject(id);
-    if (res.error) { this.toast(res.error, 'error'); return; }
-    this.toast('Project deleted', 'success');
-    this.navigate('dashboard');
+    if (!confirm(`Are you sure you want to permanently delete "${name}"?\n\nThis will remove ALL project data including WBS, infrastructure, SOV, billing, change orders, RFIs, daily logs, and punch items.\n\nThis CANNOT be undone.`)) return;
+    // Show loading state on the button
+    const btn = event && event.target ? event.target.closest('button') : null;
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Deleting…'; }
+    this.toast('Deleting project and all associated data…', 'info');
+    try {
+      const res = await API.deleteProject(id);
+      if (res.error) { this.toast(res.error, 'error'); if (btn) { btn.disabled = false; btn.textContent = '🗑 Delete Project'; } return; }
+      this.toast('Project deleted successfully', 'success');
+      this.navigate('dashboard');
+    } catch (err) {
+      this.toast('Delete failed: ' + (err.message || 'Unknown error'), 'error');
+      if (btn) { btn.disabled = false; btn.textContent = '🗑 Delete Project'; }
+    }
   },
 
   renderDashboard() {

@@ -98,7 +98,7 @@ export async function onRequestPut(context) {
 }
 
 export async function onRequestDelete(context) {
-    const { env, params, data } = context;
+    const { env, params } = context;
     const id = params.id;
 
     try {
@@ -106,13 +106,13 @@ export async function onRequestDelete(context) {
         await env.DB.prepare(`PRAGMA foreign_keys = OFF`).run();
 
         // Hard delete — remove project and ALL associated data
+        // Use project_id directly where available (faster, no subqueries)
         await env.DB.prepare(`DELETE FROM wbs_tasks WHERE project_id = ?`).bind(id).run();
-        await env.DB.prepare(`DELETE FROM location_items WHERE location_id IN (SELECT id FROM locations WHERE project_id = ?)`).bind(id).run();
-        await env.DB.prepare(`DELETE FROM cable_runs WHERE location_id IN (SELECT id FROM locations WHERE project_id = ?)`).bind(id).run();
-        await env.DB.prepare(`DELETE FROM location_labor WHERE location_id IN (SELECT id FROM locations WHERE project_id = ?)`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM location_items WHERE project_id = ?`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM cable_runs WHERE project_id = ?`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM location_labor WHERE project_id = ?`).bind(id).run();
         await env.DB.prepare(`DELETE FROM locations WHERE project_id = ?`).bind(id).run();
         await env.DB.prepare(`DELETE FROM sov_items WHERE project_id = ?`).bind(id).run();
-        await env.DB.prepare(`DELETE FROM billing_line_items WHERE billing_period_id IN (SELECT id FROM billing_periods WHERE project_id = ?)`).bind(id).run();
         await env.DB.prepare(`DELETE FROM billing_periods WHERE project_id = ?`).bind(id).run();
         await env.DB.prepare(`DELETE FROM change_orders WHERE project_id = ?`).bind(id).run();
         await env.DB.prepare(`DELETE FROM rfis WHERE project_id = ?`).bind(id).run();
