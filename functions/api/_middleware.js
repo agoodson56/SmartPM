@@ -3,7 +3,7 @@
 // Validates session tokens for all /api/* routes (except login)
 // ═══════════════════════════════════════════════════════════════
 
-const PUBLIC_PATHS = ['/api/auth/login'];
+const PUBLIC_PATHS = ['/api/auth/login', '/api/smartplans-stats'];
 
 export async function onRequest(context) {
     const { request, env, data } = context;
