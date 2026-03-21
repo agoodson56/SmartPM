@@ -1,10 +1,10 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { Upload, FileText, Zap, CheckCircle, AlertTriangle, ChevronRight, X, Download, Eye, Settings, Layers, Cable, Shield, Camera, Flame, Building, Grid3X3, BarChart3, FileSpreadsheet, AlertCircle, Loader2, Plus, Trash2, User, Clock, ClipboardList } from 'lucide-react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { Upload, FileText, Zap, CheckCircle, AlertTriangle, ChevronRight, X, Download, Eye, Settings, Layers, Cable, Shield, Camera, Flame, Building, Grid3X3, BarChart3, FileSpreadsheet, AlertCircle, Loader2, Plus, Trash2, User, Clock, ClipboardList, DollarSign, Hash, RotateCcw } from 'lucide-react';
 import DetailedBOM, { generateDetailedBOM } from './src/components/DetailedBOM.jsx';
 import ProjectManagerPortal from './src/components/ProjectManagerPortal.jsx';
 import SettingsPortal, { DEFAULT_SETTINGS } from './src/components/SettingsPortal.jsx';
 import FloorPlanOverlay from './src/components/FloorPlanOverlay.jsx';
-import { analyzeFloorPlan, analyzeAllSheets, convertToDeviceCounts } from './src/services/blueprintAnalyzer.js';
+import { analyzeFloorPlan, analyzeAllSheets, convertToDeviceCounts, fetchCloudStats, reportBidToCloud, resetCloudStats, getSessionUsage, resetSessionUsage } from './src/services/blueprintAnalyzer.js';
 
 // Main Application Component
 export default function LVTakeoffSystem() {
@@ -30,6 +30,19 @@ export default function LVTakeoffSystem() {
   const [showOverlay, setShowOverlay] = useState(false); // Floor plan verification overlay
   const [detectedDevices, setDetectedDevices] = useState([]); // AI-detected devices with coordinates
   const [useAiAnalysis, setUseAiAnalysis] = useState(false); // Toggle for AI vs mock data
+  const [cloudStats, setCloudStats] = useState({ total_cost: 0, bid_count: 0 }); // Cloud-synced usage stats
+  const [showResetConfirm, setShowResetConfirm] = useState(false); // Reset confirmation modal
+
+  // Fetch cloud stats on mount and periodically
+  useEffect(() => {
+    const loadStats = async () => {
+      const stats = await fetchCloudStats();
+      if (!stats.error) setCloudStats(stats);
+    };
+    loadStats();
+    const interval = setInterval(loadStats, 30000); // Refresh every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   const steps = [
     { id: 0, name: 'Upload Files', icon: Upload },
@@ -690,6 +703,19 @@ export default function LVTakeoffSystem() {
         );
         setDetectedDevices(allDevices);
 
+        // Report this bid's cost to the cloud for cross-device tracking
+        const usage = getSessionUsage();
+        if (usage.totalCost > 0) {
+          const updatedStats = await reportBidToCloud(
+            projectName || 'Untitled Project',
+            usage.totalCost,
+            usage.totalInputTokens,
+            usage.totalOutputTokens
+          );
+          if (!updatedStats.error) setCloudStats(updatedStats);
+          resetSessionUsage(); // Reset session after reporting
+        }
+
       } catch (error) {
         console.error('[App] AI analysis failed, falling back to demo data:', error);
         setProcessingStatus(`⚠️ AI analysis failed: ${error.message}. Using demo data...`);
@@ -1089,6 +1115,32 @@ export default function LVTakeoffSystem() {
                 <h1 className="text-xl font-bold tracking-tight text-gold">LV Takeoff Intelligence</h1>
                 <p className="text-xs text-gold/60">AI-Powered Low-Voltage Estimation</p>
               </div>
+            </div>
+
+            {/* Usage Stats Counters */}
+            <div className="flex items-center gap-3">
+              {/* Bid Counter */}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20" title="Total bids processed across all devices">
+                <Hash className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-sm font-bold text-emerald-400">{cloudStats.bid_count || 0}</span>
+                <span className="text-xs text-emerald-400/60 hidden md:inline">bids</span>
+              </div>
+              {/* Total Cost */}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20" title="Total AI API cost across all devices">
+                <DollarSign className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-sm font-bold text-amber-400">${(cloudStats.total_cost || 0).toFixed(2)}</span>
+                <span className="text-xs text-amber-400/60 hidden md:inline">spent</span>
+              </div>
+              {/* Admin Reset Button */}
+              {userRole === 'estimator' && (
+                <button
+                  onClick={() => setShowResetConfirm(true)}
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-all"
+                  title="Reset counters (Admin only)"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-red-400" />
+                </button>
+              )}
             </div>
 
             {/* Step Progress */}
@@ -2082,6 +2134,38 @@ export default function LVTakeoffSystem() {
           onAnalyze={() => planFiles[0] && analyzeFloorPlanForMarking(planFiles[0])}
           pdfFile={planFiles[0]?.type === 'application/pdf' ? planFiles[0] : null}
         />
+      )}
+
+      {/* Reset Stats Confirmation Modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-black-medium border border-gold/30 rounded-2xl p-6 max-w-sm mx-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-gold mb-3">Reset Usage Counters?</h3>
+            <p className="text-sm text-gold/60 mb-4">
+              This will reset the <strong className="text-amber-400">total cost</strong> and <strong className="text-emerald-400">bid count</strong> back to zero across all devices. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="px-4 py-2 rounded-lg border border-gold/30 text-gold/60 hover:bg-gold/10 transition-all text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const result = await resetCloudStats('sp-admin-2026', 'admin');
+                  if (!result.error) {
+                    setCloudStats({ total_cost: 0, bid_count: 0 });
+                  }
+                  setShowResetConfirm(false);
+                }}
+                className="px-4 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-all text-sm font-medium"
+              >
+                Reset Counters
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
