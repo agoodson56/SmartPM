@@ -56,6 +56,11 @@
   --radius-xl: 20px;
   --sidebar-width: 240px;
   --header-height: 56px;
+
+  /* Gold Trim */
+  --gold-trim: 1px solid rgba(212, 165, 55, 0.35);
+  --gold-trim-hover: 1px solid rgba(212, 165, 55, 0.55);
+  --gold-shadow: 0 0 0 1px rgba(212, 165, 55, 0.08);
 }
 
 /* ─── Reset ─── */
@@ -114,8 +119,8 @@ body {
   padding: 40px;
   background: #FFFFFF;
   border-radius: var(--radius-xl);
-  border: 1px solid rgba(13, 148, 136, 0.15);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(13, 148, 136, 0.05);
+  border: 1px solid rgba(212, 165, 55, 0.4);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(212, 165, 55, 0.1);
 }
 
 .login-logo {
@@ -158,7 +163,7 @@ body {
   width: 100%;
   padding: 12px 14px;
   background: var(--bg-base);
-  border: 1px solid var(--border-medium);
+  border: 1px solid rgba(212, 165, 55, 0.3);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-size: 14px;
@@ -223,7 +228,7 @@ body {
 .app-header {
   height: var(--header-height);
   background: #FFFFFF;
-  border-bottom: 2px solid rgba(13, 148, 136, 0.12);
+  border-bottom: 2px solid rgba(212, 165, 55, 0.35);
   display: flex;
   align-items: center;
   padding: 0 20px;
@@ -341,7 +346,7 @@ body {
 .app-sidebar {
   width: var(--sidebar-width);
   background: var(--bg-base);
-  border-right: 1px solid var(--border-light);
+  border-right: 2px solid rgba(212, 165, 55, 0.25);
   padding: 16px 10px;
   overflow-y: auto;
   height: calc(100vh - var(--header-height));
@@ -479,22 +484,22 @@ body {
 .btn-secondary {
   background: var(--bg-surface);
   color: var(--text-secondary);
-  border-color: var(--border-medium);
+  border-color: rgba(212, 165, 55, 0.3);
 }
 
 .btn-secondary:hover {
-  border-color: var(--accent-sky);
+  border-color: rgba(212, 165, 55, 0.6);
   color: var(--accent-sky);
 }
 
 .btn-success {
-  background: linear-gradient(135deg, var(--accent-emerald), #059669);
+  background: linear-gradient(135deg, #14B8A6, #0D9488, #0F766E);
   color: white;
   border: none;
 }
 
 .btn-success:hover {
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 16px rgba(13, 148, 136, 0.3);
 }
 
 .btn-danger {
@@ -534,14 +539,14 @@ body {
 
 .card {
   background: var(--bg-raised);
-  border: 1px solid var(--border-light);
+  border: 1px solid rgba(212, 165, 55, 0.25);
   border-radius: var(--radius-lg);
   padding: 20px;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .card:hover {
-  border-color: var(--border-medium);
+  border-color: rgba(212, 165, 55, 0.45);
 }
 
 .card-header {
@@ -572,7 +577,7 @@ body {
 
 .metric-card {
   background: var(--bg-raised);
-  border: 1px solid var(--border-light);
+  border: 1px solid rgba(212, 165, 55, 0.25);
   border-radius: var(--radius-lg);
   padding: 18px 20px;
   position: relative;
@@ -640,7 +645,7 @@ body {
 
 .data-table-wrap {
   overflow-x: auto;
-  border: 1px solid var(--border-light);
+  border: 1px solid rgba(212, 165, 55, 0.25);
   border-radius: var(--radius-lg);
 }
 
@@ -959,7 +964,7 @@ body {
 .form-textarea {
   padding: 10px 12px;
   background: var(--bg-base);
-  border: 1px solid var(--border-medium);
+  border: 1px solid rgba(212, 165, 55, 0.3);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: 13px;
@@ -1016,7 +1021,7 @@ body {
 
 .project-card {
   background: var(--bg-raised);
-  border: 1px solid var(--border-light);
+  border: 1px solid rgba(212, 165, 55, 0.25);
   border-radius: var(--radius-lg);
   padding: 20px;
   cursor: pointer;
@@ -1026,8 +1031,8 @@ body {
 }
 
 .project-card:hover {
-  border-color: var(--accent-sky);
-  box-shadow: 0 4px 24px rgba(56, 189, 248, 0.08);
+  border-color: rgba(212, 165, 55, 0.5);
+  box-shadow: 0 4px 24px rgba(13, 148, 136, 0.08);
   transform: translateY(-2px);
 }
 
