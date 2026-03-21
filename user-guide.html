@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SmartPM — User Guide</title>
+  <title>SmartPM — User Guide | 3D Technology Services</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -93,6 +93,7 @@
       <tr><td>✅ Punch List</td><td>Deficiency tracking through closeout</td></tr>
       <tr><td>🤖 AI Assistant</td><td>6 Gemini AI-powered analysis tools</td></tr>
       <tr><td>🔐 Role-Based Access</td><td>4 permission levels control data access</td></tr>
+      <tr><td>📖 User Guide</td><td>Built-in documentation accessible from the header</td></tr>
     </table>
     <div class="callout callout-info">ℹ️ All data is stored securely in the cloud (Cloudflare D1 database). Projects persist across sessions and can be accessed from any device.</div>
 
@@ -118,7 +119,7 @@
       <tr><td>Edit project settings</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
       <tr><td>Edit material/labor actuals</td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
       <tr><td>Edit infrastructure budgets</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
-      <tr><td>Delete projects</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
+      <tr><td>Delete any project</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
       <tr><td>Manage user passwords</td><td>✅</td><td>✅*</td><td>❌</td><td>❌</td></tr>
     </table>
     <p><em>*Ops Managers can only change PM passwords.</em></p>
@@ -136,6 +137,9 @@
     </ul>
     <h4>Project Cards</h4>
     <p>Each project appears as a card showing name, status, contract value, billed amount, and disciplines. Click a card to open the project.</p>
+    <h4>Deleting Projects</h4>
+    <p>Admin users see a red <strong>"🗑 Delete Project"</strong> button on every project card. Clicking it shows a confirmation dialog, then <strong>permanently removes</strong> the project and all associated data (WBS, infrastructure, SOV, billing, change orders, RFIs, daily logs, punch items, contacts, and documents).</p>
+    <div class="callout callout-warn">⚠️ <strong>Deletion is permanent.</strong> There is no undo. Make sure you have exported any data you need before deleting a project.</div>
 
     <h2 id="import">5. Importing from SmartPlans</h2>
     <p>This is the primary workflow for creating projects.</p>
@@ -175,10 +179,26 @@
     <p>Click the <strong>✏️</strong> button on any task to open the update modal:</p>
     <table>
       <tr><th>Section</th><th>What You See</th></tr>
-      <tr><td>📊 Estimated from Bid (Read-Only)</td><td>Material cost, labor hours, and total budget from the original SmartPlans estimate</td></tr>
-      <tr><td>✏️ Actual Progress</td><td>Enter quantity installed (ft or ea), actual labor hours, progress %, and status</td></tr>
+      <tr><td>📊 Estimated from Bid (Read-Only)</td><td>Material cost, labor hours, and total budget from the original SmartPlans estimate — displayed in a gold-bordered card</td></tr>
+      <tr><td>✏️ Qty Installed (ft or ea)</td><td>Enter the physical quantity installed — e.g., "500 ft" of cable or "24 ea" patch panels</td></tr>
+      <tr><td>📏 Unit</td><td>Select the unit type: Feet, Each, Lot, or Box</td></tr>
+      <tr><td>⏱️ Actual Labor Hours</td><td>Enter how many hours the crew spent on this task</td></tr>
+      <tr><td>📊 Progress %</td><td>Slider from 0–100% indicating task completion</td></tr>
+      <tr><td>📋 Status</td><td>Not Started, In Progress, On Hold, or Complete</td></tr>
+      <tr><td>📅 Dates / Assigned / Notes</td><td>Actual start/end dates, who's responsible, and free-text notes</td></tr>
     </table>
-    <div class="callout callout-tip">💡 <strong>PMs only enter what they know:</strong> how many feet or pieces were installed and how many hours it took. You do NOT need to enter dollar amounts — the system calculates costs automatically.</div>
+    <h4>WBS Table Columns</h4>
+    <p>The WBS table now shows two new columns for actuals tracking:</p>
+    <table>
+      <tr><th>Column</th><th>Description</th></tr>
+      <tr><td>Material 🔒</td><td>Budgeted material cost (read-only from SmartPlans)</td></tr>
+      <tr><td>Labor 🔒</td><td>Budgeted labor hours (read-only from SmartPlans)</td></tr>
+      <tr><td><strong>Installed</strong></td><td>Actual quantity installed with unit (e.g., "500 ft" or "24 ea")</td></tr>
+      <tr><td><strong>Hrs Used</strong></td><td>Actual labor hours spent vs. budgeted (with traffic light health)</td></tr>
+      <tr><td>Progress</td><td>Visual progress bar with percentage</td></tr>
+      <tr><td>Status</td><td>Current task status badge</td></tr>
+    </table>
+    <div class="callout callout-tip">💡 <strong>PMs only enter what they know:</strong> how many feet or pieces were installed and how many hours it took. You do NOT need to enter dollar amounts — the system auto-calculates costs from the budgeted unit cost × installed quantity.</div>
 
     <h2 id="infrastructure">7. Infrastructure Module</h2>
     <p>Manage telecom rooms (MDF, IDF, TR) and their contents.</p>

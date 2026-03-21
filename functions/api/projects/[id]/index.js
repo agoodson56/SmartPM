@@ -102,19 +102,33 @@ export async function onRequestDelete(context) {
     const id = params.id;
 
     try {
-        // Soft delete — set status to cancelled
-        await env.DB.prepare(
-            `UPDATE projects SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?`
-        ).bind(id).run();
+        // Disable FK constraints for clean cascade delete
+        await env.DB.prepare(`PRAGMA foreign_keys = OFF`).run();
 
-        await env.DB.prepare(
-            `INSERT INTO activity_log (project_id, user_id, action, entity_type, entity_id, description)
-       VALUES (?, ?, 'delete', 'project', ?, 'Project archived')`
-        ).bind(id, data.user.id, id).run();
+        // Hard delete — remove project and ALL associated data
+        await env.DB.prepare(`DELETE FROM wbs_tasks WHERE project_id = ?`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM location_items WHERE location_id IN (SELECT id FROM locations WHERE project_id = ?)`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM cable_runs WHERE location_id IN (SELECT id FROM locations WHERE project_id = ?)`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM location_labor WHERE location_id IN (SELECT id FROM locations WHERE project_id = ?)`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM locations WHERE project_id = ?`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM sov_items WHERE project_id = ?`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM billing_line_items WHERE billing_period_id IN (SELECT id FROM billing_periods WHERE project_id = ?)`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM billing_periods WHERE project_id = ?`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM change_orders WHERE project_id = ?`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM rfis WHERE project_id = ?`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM submittals WHERE project_id = ?`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM daily_logs WHERE project_id = ?`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM punch_items WHERE project_id = ?`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM documents WHERE project_id = ?`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM activity_log WHERE project_id = ?`).bind(id).run();
+        await env.DB.prepare(`DELETE FROM projects WHERE id = ?`).bind(id).run();
+
+        // Re-enable FK constraints
+        await env.DB.prepare(`PRAGMA foreign_keys = ON`).run();
 
         return Response.json({ success: true });
     } catch (err) {
         console.error('Delete project error:', err);
-        return Response.json({ error: 'Failed to delete project' }, { status: 500 });
+        return Response.json({ error: 'Failed to delete project: ' + err.message }, { status: 500 });
     }
 }
