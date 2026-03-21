@@ -538,7 +538,7 @@ export async function onRequestPost(context) {
         `INSERT INTO activity_log (project_id, user_id, action, entity_type, entity_id, description)
          VALUES (?, ?, 'import', 'project', ?, ?)`
       ).bind(id, data.user.id, id,
-        `Imported from SmartPlans: ${project.name || 'Project'} — $${contractValue.toLocaleString()} contract, ${sovItemCount} SOV items, ${infraCount} infrastructure locations, ${wbsCount} WBS phases, ${rfiCount} RFIs`
+        `Imported from SmartPlans: ${project.name || 'Project'} — $${contractValue.toFixed(2)} contract, ${sovItemCount} SOV items, ${infraCount} infrastructure locations, ${wbsCount} WBS phases, ${rfiCount} RFIs`
       )
     );
 
