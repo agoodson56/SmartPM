@@ -8,7 +8,7 @@
 
 :root {
   /* Background layers — Light / White */
-  --bg-deepest: #F8FAFB;
+  --bg-deepest: #000000;
   --bg-base: #FFFFFF;
   --bg-raised: #FFFFFF;
   --bg-surface: #F4F7F9;
@@ -79,6 +79,20 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  accent-color: #0D9488;
+}
+
+option:checked,
+option:hover {
+  background: #0D9488 !important;
+  color: #FFFFFF !important;
+}
+
+select:focus,
+input:focus,
+textarea:focus {
+  outline: 2px solid #0D9488;
+  outline-offset: -1px;
 }
 
 /* ─── Scrollbar ─── */
