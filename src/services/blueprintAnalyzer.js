@@ -7,23 +7,6 @@ const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 const GEMINI_UPLOAD_URL = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
 
-// SmartPM API for cross-device usage stats
-const STATS_API_URL = 'https://smartpm.pages.dev/api/smartplans-stats';
-
-// Gemini 2.0 Flash pricing (per 1M tokens) as of March 2026
-const PRICING = {
-    input_per_million: 0.10,    // $0.10 per 1M input tokens
-    output_per_million: 0.40,   // $0.40 per 1M output tokens
-    image_per_image: 0.0258,    // ~$0.0258 per image (calculated at 258 tokens)
-};
-
-// Session-level accumulator (resets on page reload, but reported to cloud)
-let sessionUsage = {
-    totalInputTokens: 0,
-    totalOutputTokens: 0,
-    totalCost: 0,
-    apiCalls: 0,
-};
 
 /**
  * Upload a file to Gemini File API (for PDFs and large files)
@@ -527,92 +510,4 @@ export async function testApiConnection() {
     } catch (error) {
         return { success: false, error: error.message };
     }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// USAGE STATS — Cloud-synced via SmartPM API
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * Get current session usage (local)
- */
-export function getSessionUsage() {
-    return { ...sessionUsage };
-}
-
-/**
- * Fetch cumulative stats from the SmartPM cloud database
- */
-export async function fetchCloudStats() {
-    try {
-        const res = await fetch(STATS_API_URL);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return await res.json();
-    } catch (err) {
-        console.error('[Stats] Failed to fetch cloud stats:', err);
-        return { total_cost: 0, bid_count: 0, error: err.message };
-    }
-}
-
-/**
- * Report a completed bid's cost to the SmartPM cloud database
- * @param {string} projectName - Name of the project that was estimated
- * @param {number} cost - Total API cost for this bid
- * @param {number} inputTokens - Total input tokens used
- * @param {number} outputTokens - Total output tokens used  
- */
-export async function reportBidToCloud(projectName, cost, inputTokens, outputTokens) {
-    try {
-        const res = await fetch(STATS_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                project_name: projectName || 'Unknown Project',
-                cost: cost || sessionUsage.totalCost,
-                input_tokens: inputTokens || sessionUsage.totalInputTokens,
-                output_tokens: outputTokens || sessionUsage.totalOutputTokens,
-            })
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        console.log(`[Stats] Reported to cloud: $${cost?.toFixed(4)} | Cloud total: $${data.total_cost?.toFixed(4)} | Bids: ${data.bid_count}`);
-        return data;
-    } catch (err) {
-        console.error('[Stats] Failed to report to cloud:', err);
-        return { error: err.message };
-    }
-}
-
-/**
- * Reset cloud stats (admin only)
- * @param {string} adminKey - The admin reset key
- * @param {string} resetBy - Username performing the reset
- */
-export async function resetCloudStats(adminKey, resetBy) {
-    try {
-        const res = await fetch(`${STATS_API_URL}?key=${encodeURIComponent(adminKey)}`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reset_by: resetBy || 'admin' })
-        });
-        if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.error || `HTTP ${res.status}`);
-        }
-        const data = await res.json();
-        console.log('[Stats] Cloud stats reset successfully');
-        // Also reset session
-        sessionUsage = { totalInputTokens: 0, totalOutputTokens: 0, totalCost: 0, apiCalls: 0 };
-        return data;
-    } catch (err) {
-        console.error('[Stats] Failed to reset cloud stats:', err);
-        return { error: err.message };
-    }
-}
-
-/**
- * Reset session usage (local only, does not affect cloud)
- */
-export function resetSessionUsage() {
-    sessionUsage = { totalInputTokens: 0, totalOutputTokens: 0, totalCost: 0, apiCalls: 0 };
 }

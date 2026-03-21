@@ -4,7 +4,7 @@ import DetailedBOM, { generateDetailedBOM } from './src/components/DetailedBOM.j
 import ProjectManagerPortal from './src/components/ProjectManagerPortal.jsx';
 import SettingsPortal, { DEFAULT_SETTINGS } from './src/components/SettingsPortal.jsx';
 import FloorPlanOverlay from './src/components/FloorPlanOverlay.jsx';
-import { analyzeFloorPlan, analyzeAllSheets, convertToDeviceCounts, fetchCloudStats, reportBidToCloud, resetCloudStats, getSessionUsage, resetSessionUsage } from './src/services/blueprintAnalyzer.js';
+import { analyzeFloorPlan, analyzeAllSheets, convertToDeviceCounts } from './src/services/blueprintAnalyzer.js';
 
 // Main Application Component
 export default function LVTakeoffSystem() {
