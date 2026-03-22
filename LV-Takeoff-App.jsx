@@ -2192,17 +2192,8 @@ export default function LVTakeoffSystem() {
         </div>
       </footer>
 
-      {/* Floor Plan Verification Overlay */}
-      {showOverlay && (
-        <FloorPlanOverlay
-          imageUrl={planFiles[0] ? URL.createObjectURL(planFiles[0]) : null}
-          imageName={planFiles[0]?.name || 'Floor Plan'}
-          detectedDevices={detectedDevices}
-          onClose={() => setShowOverlay(false)}
-          onAnalyze={() => planFiles[0] && analyzeFloorPlanForMarking(planFiles[0])}
-          pdfFile={planFiles[0]?.type === 'application/pdf' ? planFiles[0] : null}
-        />
-      )}
+
+
 
       {/* Reset Stats Confirmation Modal */}
       {showResetConfirm && (
