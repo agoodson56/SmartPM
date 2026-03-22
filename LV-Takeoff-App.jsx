@@ -1,9 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Upload, FileText, Zap, CheckCircle, AlertTriangle, ChevronRight, X, Download, Eye, Settings, Layers, Cable, Shield, Camera, Flame, Building, Grid3X3, BarChart3, FileSpreadsheet, AlertCircle, Loader2, Plus, Trash2, User, Clock, ClipboardList, DollarSign, Hash, RotateCcw } from 'lucide-react';
+import { Upload, FileText, Zap, CheckCircle, AlertTriangle, ChevronRight, X, Download, Eye, Settings, Layers, Cable, Shield, Camera, Flame, Building, Grid3X3, BarChart3, FileSpreadsheet, AlertCircle, Loader2, Plus, Trash2, User, Clock, ClipboardList, DollarSign, Hash, RotateCcw, FileJson } from 'lucide-react';
 import DetailedBOM, { generateDetailedBOM } from './src/components/DetailedBOM.jsx';
 import ProjectManagerPortal from './src/components/ProjectManagerPortal.jsx';
 import SettingsPortal, { DEFAULT_SETTINGS } from './src/components/SettingsPortal.jsx';
-import FloorPlanOverlay from './src/components/FloorPlanOverlay.jsx';
 import { analyzeFloorPlan, analyzeAllSheets, convertToDeviceCounts } from './src/services/blueprintAnalyzer.js';
 
 // Main Application Component
@@ -23,25 +22,71 @@ export default function LVTakeoffSystem() {
   const [confirmedSymbols, setConfirmedSymbols] = useState([]);
   const [projectSettings, setProjectSettings] = useState(DEFAULT_SETTINGS);
   const [userRole, setUserRole] = useState('viewer'); // 'estimator', 'pm', 'viewer'
-  const [passwords, setPasswords] = useState({ estimator: 'Admin123', pm: 'Admin123' });
+  // Passwords loaded from localStorage — no hardcoded defaults
+  const [passwords, setPasswords] = useState(() => {
+    try {
+      const saved = localStorage.getItem('lv-takeoff-passwords');
+      return saved ? JSON.parse(saved) : { estimator: '', pm: '' };
+    } catch { return { estimator: '', pm: '' }; }
+  });
   const [showPasswordModal, setShowPasswordModal] = useState(null); // null or role name
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const [showOverlay, setShowOverlay] = useState(false); // Floor plan verification overlay
   const [detectedDevices, setDetectedDevices] = useState([]); // AI-detected devices with coordinates
   const [useAiAnalysis, setUseAiAnalysis] = useState(false); // Toggle for AI vs mock data
   const [cloudStats, setCloudStats] = useState({ total_cost: 0, bid_count: 0 }); // Cloud-synced usage stats
   const [showResetConfirm, setShowResetConfirm] = useState(false); // Reset confirmation modal
+  const [importedSmartPlansData, setImportedSmartPlansData] = useState(null); // SmartPlans JSON import
+  const smartPlansFileRef = useRef(null); // Ref for SmartPlans JSON file input
 
-  // Fetch cloud stats on mount and periodically
+  // Fetch cloud stats once on mount (no polling)
   useEffect(() => {
     const loadStats = async () => {
-      const stats = await fetchCloudStats();
-      if (!stats.error) setCloudStats(stats);
+      try {
+        if (typeof fetchCloudStats === 'function') {
+          const stats = await fetchCloudStats();
+          if (!stats.error) setCloudStats(stats);
+        }
+      } catch (e) { console.warn('[SmartPM] Cloud stats unavailable:', e.message); }
     };
     loadStats();
-    const interval = setInterval(loadStats, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
+  }, []);
+
+  // Persist passwords to localStorage when changed
+  useEffect(() => {
+    if (passwords.estimator || passwords.pm) {
+      localStorage.setItem('lv-takeoff-passwords', JSON.stringify(passwords));
+    }
+  }, [passwords]);
+
+  // ─── SmartPlans JSON Import Handler ───
+  const handleSmartPlansImport = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = JSON.parse(evt.target.result);
+        // Validate it's a SmartPlans export
+        if (data._meta?.format === 'smartplans-export' || data.infrastructure || data.financials) {
+          setImportedSmartPlansData(data);
+          console.log('[SmartPM] SmartPlans data imported:', {
+            project: data.project?.name,
+            locations: data.infrastructure?.locations?.length || 0,
+            categories: data.financials?.categories?.length || 0,
+            lineItems: data.financials?.totalLineItems || 0,
+          });
+        } else {
+          alert('Invalid file format. Please import a SmartPlans JSON export file.');
+        }
+      } catch (err) {
+        console.error('[SmartPM] Import parse error:', err);
+        alert('Failed to parse JSON file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    // Reset file input so same file can be re-imported
+    e.target.value = '';
   }, []);
 
   const steps = [
@@ -1999,14 +2044,37 @@ export default function LVTakeoffSystem() {
               {/* Detailed BOM Tab */}
               {activeTab === 'detailedBom' && (
                 <div className="p-6">
-                  <DetailedBOM results={results} canEdit={userRole === 'estimator'} laborRates={projectSettings?.laborRates} />
+                  {/* SmartPlans Import Button */}
+                  <div className="mb-4 flex items-center gap-3">
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={handleSmartPlansImport}
+                      className="hidden"
+                      ref={smartPlansFileRef}
+                      id="smartplans-import"
+                    />
+                    <button
+                      onClick={() => smartPlansFileRef.current?.click()}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors border border-blue-500/30"
+                    >
+                      <FileJson className="w-4 h-4" />
+                      Import SmartPlans JSON
+                    </button>
+                    {importedSmartPlansData && (
+                      <span className="text-sm text-emerald-400">
+                        ✅ {importedSmartPlansData.project?.name || 'Project'} loaded — {importedSmartPlansData.infrastructure?.locations?.length || 0} locations
+                      </span>
+                    )}
+                  </div>
+                  <DetailedBOM results={results} canEdit={userRole === 'estimator'} laborRates={projectSettings?.laborRates} importedData={importedSmartPlansData} />
                 </div>
               )}
 
               {/* PM Portal Tab */}
               {activeTab === 'pmPortal' && (
                 <div className="p-6">
-                  <ProjectManagerPortal bomData={generateDetailedBOM(results)} canEdit={userRole === 'pm'} />
+                  <ProjectManagerPortal bomData={generateDetailedBOM(results, importedSmartPlansData)} canEdit={userRole === 'pm'} />
                 </div>
               )}
 

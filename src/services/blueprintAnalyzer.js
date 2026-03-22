@@ -1,11 +1,16 @@
 /**
  * Blueprint AI Analyzer Service
- * Uses Gemini Vision API to analyze floor plans and count LV symbols
+ * Uses server-side proxy to analyze floor plans and count LV symbols
+ * SECURITY: API keys are handled server-side — never expose in client bundle
  */
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
-const GEMINI_UPLOAD_URL = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
+// Use server-side proxy endpoint (SmartPlans Cloudflare Worker)
+// Falls back to environment variable ONLY for local dev — never bundled in production
+const PROXY_ENDPOINT = '/api/ai/invoke';
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const GEMINI_API_URL = GEMINI_API_KEY
+    ? 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+    : null;
 
 
 /**

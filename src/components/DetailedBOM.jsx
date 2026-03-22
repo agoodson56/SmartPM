@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Package, Wrench, Cable, Server, Building, DollarSign, Clock, Download, Upload, Edit3, X, Check } from 'lucide-react';
+import { ChevronDown, ChevronRight, Package, Wrench, Cable, Server, Building, DollarSign, Clock, Download, Upload, Edit3, X, Check, FileJson } from 'lucide-react';
 
 // Default labor rates ($/hr) - these are overridden by props from settings
 const DEFAULT_LABOR_RATES = {
@@ -25,188 +25,237 @@ const calculateBlendedRate = (rates) => {
         (rates.apprentice * LABOR_DISTRIBUTION.apprentice);
 };
 
-// Generate detailed BOM data with costs and labor
-export function generateDetailedBOM(results) {
-    const mdf = {
-        name: 'MDF',
-        type: 'MDF',
-        floor: 'Level 1',
-        buildout: {
-            materials: [
-                { item: '42U 4-Post Rack', qty: 2, unit: 'EA', unitCost: 1850, laborHrs: 4 },
-                { item: 'Vertical Cable Manager', qty: 4, unit: 'EA', unitCost: 285, laborHrs: 0.5 },
-                { item: 'Horizontal Cable Manager 2U', qty: 8, unit: 'EA', unitCost: 95, laborHrs: 0.25 },
-                { item: 'Power Strip 20A', qty: 4, unit: 'EA', unitCost: 245, laborHrs: 0.5 },
-                { item: 'Ground Bar Kit', qty: 2, unit: 'EA', unitCost: 125, laborHrs: 1 },
-                { item: 'Ladder Rack 12"', qty: 24, unit: 'FT', unitCost: 18, laborHrs: 0.1 },
-                { item: 'Basket Tray 12"', qty: 50, unit: 'FT', unitCost: 12, laborHrs: 0.08 }
-            ]
+// ═══════════════════════════════════════════════════════════
+// CATEGORY → BOM SECTION MAPPING
+// Maps SmartPlans infrastructure item categories to BOM sections
+// ═══════════════════════════════════════════════════════════
+const CATEGORY_TO_SECTION = {
+    rack: 'buildout',
+    cable_management: 'buildout',
+    pdu: 'buildout',
+    grounding: 'buildout',
+    conduit: 'buildout',
+    switch: 'deviceMaterial',
+    patch_panel: 'deviceMaterial',
+    fiber_panel: 'deviceMaterial',
+    ups: 'deviceMaterial',
+    cctv: 'deviceMaterial',
+    access_control: 'deviceMaterial',
+    fire_alarm: 'deviceMaterial',
+    av: 'deviceMaterial',
+    other: 'deviceMaterial',
+};
+
+// Default labor hours per item category (industry standard estimates)
+const DEFAULT_LABOR_PER_CATEGORY = {
+    rack: 4.0,
+    cable_management: 0.5,
+    pdu: 0.5,
+    grounding: 1.0,
+    conduit: 0.1,
+    switch: 1.0,
+    patch_panel: 1.5,
+    fiber_panel: 0.5,
+    ups: 2.0,
+    cctv: 0.5,
+    access_control: 0.5,
+    fire_alarm: 0.5,
+    av: 0.5,
+    other: 0.5,
+};
+
+// ═══════════════════════════════════════════════════════════
+// GENERATE BOM FROM SMARTPLANS IMPORT DATA
+// Uses real AI-analyzed infrastructure, financials, and WBS
+// ═══════════════════════════════════════════════════════════
+export function generateDetailedBOM(results, importedData = null) {
+
+    // ─── If SmartPlans import data is available, use it ───
+    if (importedData && importedData.infrastructure && importedData.infrastructure.locations && importedData.infrastructure.locations.length > 0) {
+        return _buildBOMFromImport(importedData);
+    }
+
+    // ─── If results have parsed closets from local AI analysis, use those ───
+    if (results && results.closets && results.closets.length > 0) {
+        return _buildBOMFromLocalAnalysis(results);
+    }
+
+    // ─── Final fallback: empty BOM with user guidance ───
+    return {
+        mdf: _emptyCloset('MDF', 'MDF', 'N/A'),
+        idfs: [],
+        source: 'empty',
+        message: 'Import a SmartPlans JSON file or run AI analysis to populate the BOM.'
+    };
+}
+
+// ─── Build BOM from SmartPlans exported JSON ───
+function _buildBOMFromImport(importedData) {
+    const infra = importedData.infrastructure;
+    const locations = infra.locations || [];
+    const financials = importedData.financials || {};
+
+    // Separate MDF from IDFs
+    const mdfLocations = locations.filter(l => l.type === 'mdf');
+    const idfLocations = locations.filter(l => l.type !== 'mdf');
+
+    // Build MDF (use first MDF or create placeholder)
+    const mdfLoc = mdfLocations[0] || null;
+    const mdf = mdfLoc ? _locationToBOMCloset(mdfLoc, financials) : _emptyCloset('MDF', 'MDF', 'N/A');
+
+    // Build IDFs
+    const idfs = idfLocations.map(loc => _locationToBOMCloset(loc, financials));
+
+    return {
+        mdf,
+        idfs,
+        source: 'smartplans_import',
+        projectName: importedData.project?.name || '',
+        financialSummary: {
+            grandTotal: financials.grandTotal || 0,
+            totalLineItems: financials.totalLineItems || 0,
+            categories: (financials.categories || []).length,
         },
-        deviceMaterial: {
-            materials: [
-                // Patch Panels
-                { item: '48-Port CAT6A Patch Panel (Panduit CP48BLY)', qty: 4, unit: 'EA', unitCost: 385, laborHrs: 1.5 },
-                { item: '24-Port CAT6A Patch Panel (Panduit CP24BLY)', qty: 2, unit: 'EA', unitCost: 225, laborHrs: 1 },
-                // Fiber Enclosures & Housing
-                { item: 'Fiber Enclosure 1U Rack Mount (Corning CCH-01U)', qty: 2, unit: 'EA', unitCost: 245, laborHrs: 0.5 },
-                { item: 'LC Duplex Adapter Panel 6-Pack (Corning CCH-CP06-A9)', qty: 6, unit: 'EA', unitCost: 85, laborHrs: 0.25 },
-                { item: 'Blank Adapter Panel (Corning CCH-CP06-BL)', qty: 2, unit: 'EA', unitCost: 15, laborHrs: 0.1 },
-                { item: 'Fiber Cassette Tray (Corning CCH-CS24)', qty: 2, unit: 'EA', unitCost: 125, laborHrs: 0.25 },
-                // Network Equipment
-                { item: 'Network Switch 48-Port PoE+ (Cisco CBS350-48FP)', qty: 2, unit: 'EA', unitCost: 2850, laborHrs: 1 },
-                { item: 'UPS 3000VA Rack Mount (APC SMT3000RM2U)', qty: 1, unit: 'EA', unitCost: 1650, laborHrs: 2 },
-                // Cable Management
-                { item: 'Fiber Slack Storage Spool', qty: 4, unit: 'EA', unitCost: 18, laborHrs: 0.1 }
-            ]
-        },
-        terminations: {
-            materials: [
-                // CAT6A Jacks (Workstation Side)
-                { item: 'CAT6A Jack Blue (Panduit CJ6X88TGBU)', qty: 192, unit: 'EA', unitCost: 12.50, laborHrs: 0.15 },
-                { item: 'CAT6A Jack White (Panduit CJ6X88TGWH)', qty: 96, unit: 'EA', unitCost: 12.50, laborHrs: 0.15 },
-                // Patch Panel Terminations (MDF Side) - included in panel install
-                // Fiber Connectors
-                { item: 'LC Connector OM4 (Corning 95-050-99-X)', qty: 48, unit: 'EA', unitCost: 14.50, laborHrs: 0.25 },
-                { item: 'SC Connector OM4 (Corning 95-200-99)', qty: 12, unit: 'EA', unitCost: 12, laborHrs: 0.25 },
-                // Patch Cords - Copper
-                { item: 'CAT6A Patch Cord 3ft Blue (Panduit UTP6AX3BU)', qty: 144, unit: 'EA', unitCost: 8.50, laborHrs: 0.02 },
-                { item: 'CAT6A Patch Cord 7ft Blue (Panduit UTP6AX7BU)', qty: 48, unit: 'EA', unitCost: 12, laborHrs: 0.02 },
-                { item: 'CAT6A Patch Cord 3ft White (Panduit UTP6AX3WH)', qty: 48, unit: 'EA', unitCost: 8.50, laborHrs: 0.02 },
-                // Patch Cords - Fiber
-                { item: 'OM4 LC-LC Duplex Patch Cord 3m (Corning 002318G8120003M)', qty: 24, unit: 'EA', unitCost: 28, laborHrs: 0.05 },
-                { item: 'OM4 LC-LC Duplex Patch Cord 5m (Corning 002318G8120005M)', qty: 12, unit: 'EA', unitCost: 35, laborHrs: 0.05 },
-                // Faceplates & Surface Boxes
-                { item: 'Faceplate 2-Port White (Panduit CFPE2WHY)', qty: 96, unit: 'EA', unitCost: 3.25, laborHrs: 0.05 },
-                { item: 'Faceplate 1-Port White (Panduit CFPE1WHY)', qty: 48, unit: 'EA', unitCost: 2.50, laborHrs: 0.05 },
-                { item: 'Surface Mount Box 2-Port (Panduit CBX2WH-A)', qty: 24, unit: 'EA', unitCost: 8, laborHrs: 0.1 }
-            ]
-        },
-        cableRuns: {
-            materials: [
-                { item: 'CAT6A Plenum Blue', qty: 18500, unit: 'FT', unitCost: 0.42, laborHrs: 0.008 },
-                { item: 'CAT6A Plenum White', qty: 6200, unit: 'FT', unitCost: 0.42, laborHrs: 0.008 },
-                { item: 'J-Hook 2"', qty: 2200, unit: 'EA', unitCost: 2.15, laborHrs: 0.05 },
-                { item: 'Velcro Strap Roll', qty: 8, unit: 'ROLL', unitCost: 28, laborHrs: 0 },
-                { item: 'Cable Labels', qty: 300, unit: 'EA', unitCost: 0.35, laborHrs: 0.02 }
-            ]
-        },
-        deviceInstall: {
-            materials: [
-                { item: 'Data Outlet Box', qty: 96, unit: 'EA', unitCost: 4.50, laborHrs: 0.15 },
-                { item: 'Faceplate 2-Port', qty: 48, unit: 'EA', unitCost: 2.25, laborHrs: 0.05 },
-                { item: 'Faceplate 1-Port', qty: 48, unit: 'EA', unitCost: 1.85, laborHrs: 0.05 },
-                { item: 'WAP Mounting Bracket', qty: 12, unit: 'EA', unitCost: 35, laborHrs: 0.5 }
-            ]
-        },
-        backbone: {
-            materials: [
-                // Fiber Cable
-                { item: 'OM4 Fiber 12-Strand (to IDF-1)', qty: 150, unit: 'FT', unitCost: 2.85, laborHrs: 0.02 },
-                { item: 'OM4 Fiber 12-Strand (to IDF-2)', qty: 250, unit: 'FT', unitCost: 2.85, laborHrs: 0.02 },
-                { item: 'OM4 Fiber 12-Strand (to IDF-3)', qty: 350, unit: 'FT', unitCost: 2.85, laborHrs: 0.02 },
-                // Fiber Termination at MDF
-                { item: 'LC Duplex Connector (MDF side)', qty: 36, unit: 'EA', unitCost: 12.50, laborHrs: 0.25 },
-                { item: 'Fiber Fusion Splice', qty: 36, unit: 'EA', unitCost: 8, laborHrs: 0.3 },
-                { item: 'Fiber Splice Tray (MDF)', qty: 3, unit: 'EA', unitCost: 45, laborHrs: 0.5 },
-                { item: 'Fiber Patch Cord OM4 LC-LC 3m', qty: 36, unit: 'EA', unitCost: 18, laborHrs: 0.05 },
-                // Fiber Pathway
-                { item: 'Innerduct 1" Orange', qty: 200, unit: 'FT', unitCost: 0.85, laborHrs: 0.03 },
-                { item: 'Fiber Pull Tape', qty: 1, unit: 'ROLL', unitCost: 65, laborHrs: 0 },
-                // Voice Backbone
-                { item: '25-Pair CAT3 Riser (to IDF-1)', qty: 100, unit: 'FT', unitCost: 1.45, laborHrs: 0.015 },
-                { item: '25-Pair CAT3 Riser (to IDF-2)', qty: 175, unit: 'FT', unitCost: 1.45, laborHrs: 0.015 },
-                { item: '25-Pair CAT3 Riser (to IDF-3)', qty: 250, unit: 'FT', unitCost: 1.45, laborHrs: 0.015 },
-                // Firestopping
-                { item: 'Firestop Putty Pad', qty: 6, unit: 'EA', unitCost: 28, laborHrs: 0.5 },
-                { item: 'Firestop Caulk', qty: 4, unit: 'TUBE', unitCost: 18, laborHrs: 0.25 }
-            ]
-        }
+    };
+}
+
+// ─── Convert a SmartPlans infrastructure location to BOM closet format ───
+function _locationToBOMCloset(location, financials) {
+    const items = location.items || [];
+    const cableRuns = location.cable_runs || [];
+
+    // Group items by BOM section
+    const sections = {
+        buildout: [],
+        deviceMaterial: [],
+        terminations: [],
+        cableRuns: [],
+        deviceInstall: [],
     };
 
-    const idfs = [
-        { name: 'IDF-1', floor: 'Level 1', deviceCount: 62 },
-        { name: 'IDF-2', floor: 'Level 2', deviceCount: 84 },
-        { name: 'IDF-3', floor: 'Level 3', deviceCount: 68 }
-    ].map((idf, idx) => ({
-        ...idf,
-        type: 'IDF',
-        buildout: {
-            materials: [
-                { item: '2-Post Relay Rack 7ft', qty: 1, unit: 'EA', unitCost: 425, laborHrs: 2 },
-                { item: 'Vertical Cable Manager', qty: 2, unit: 'EA', unitCost: 185, laborHrs: 0.5 },
-                { item: 'Horizontal Cable Manager 1U', qty: 4, unit: 'EA', unitCost: 65, laborHrs: 0.2 },
-                { item: 'Power Strip 15A', qty: 2, unit: 'EA', unitCost: 125, laborHrs: 0.25 },
-                { item: 'Ground Bar', qty: 1, unit: 'EA', unitCost: 85, laborHrs: 0.5 },
-                { item: 'Basket Tray 12"', qty: 20, unit: 'FT', unitCost: 12, laborHrs: 0.08 }
-            ]
-        },
-        deviceMaterial: {
-            materials: [
-                // Patch Panels
-                { item: '48-Port CAT6A Patch Panel (Panduit CP48BLY)', qty: Math.ceil(idf.deviceCount / 48), unit: 'EA', unitCost: 385, laborHrs: 1.5 },
-                { item: '24-Port CAT6A Patch Panel (Panduit CP24BLY)', qty: idf.deviceCount % 48 > 24 ? 0 : 1, unit: 'EA', unitCost: 225, laborHrs: 1 },
-                // Fiber Enclosures & Housing
-                { item: 'Fiber Enclosure 1U Rack Mount (Corning CCH-01U)', qty: 1, unit: 'EA', unitCost: 245, laborHrs: 0.5 },
-                { item: 'LC Duplex Adapter Panel 6-Pack (Corning CCH-CP06-A9)', qty: 2, unit: 'EA', unitCost: 85, laborHrs: 0.25 },
-                { item: 'Fiber Cassette Tray (Corning CCH-CS24)', qty: 1, unit: 'EA', unitCost: 125, laborHrs: 0.25 },
-                // Network Equipment
-                { item: 'Network Switch 48-Port PoE+ (Cisco CBS350-48FP)', qty: Math.ceil(idf.deviceCount / 48), unit: 'EA', unitCost: 2850, laborHrs: 1 },
-                { item: 'Fiber Slack Storage Spool', qty: 2, unit: 'EA', unitCost: 18, laborHrs: 0.1 }
-            ]
-        },
-        terminations: {
-            materials: [
-                // CAT6A Jacks (Workstation Side)
-                { item: 'CAT6A Jack Blue (Panduit CJ6X88TGBU)', qty: Math.floor(idf.deviceCount * 0.7), unit: 'EA', unitCost: 12.50, laborHrs: 0.15 },
-                { item: 'CAT6A Jack White (Panduit CJ6X88TGWH)', qty: Math.floor(idf.deviceCount * 0.3), unit: 'EA', unitCost: 12.50, laborHrs: 0.15 },
-                // Fiber Connectors
-                { item: 'LC Connector OM4 (Corning 95-050-99-X)', qty: 12, unit: 'EA', unitCost: 14.50, laborHrs: 0.25 },
-                // Patch Cords - Copper
-                { item: 'CAT6A Patch Cord 3ft Blue (Panduit UTP6AX3BU)', qty: Math.floor(idf.deviceCount * 0.7), unit: 'EA', unitCost: 8.50, laborHrs: 0.02 },
-                { item: 'CAT6A Patch Cord 7ft Blue (Panduit UTP6AX7BU)', qty: Math.ceil(idf.deviceCount * 0.15), unit: 'EA', unitCost: 12, laborHrs: 0.02 },
-                { item: 'CAT6A Patch Cord 3ft White (Panduit UTP6AX3WH)', qty: Math.floor(idf.deviceCount * 0.3), unit: 'EA', unitCost: 8.50, laborHrs: 0.02 },
-                // Patch Cords - Fiber
-                { item: 'OM4 LC-LC Duplex Patch Cord 2m (Corning 002318G8120002M)', qty: 12, unit: 'EA', unitCost: 24, laborHrs: 0.05 },
-                // Faceplates
-                { item: 'Faceplate 2-Port White (Panduit CFPE2WHY)', qty: Math.floor(idf.deviceCount / 2), unit: 'EA', unitCost: 3.25, laborHrs: 0.05 },
-                { item: 'Faceplate 1-Port White (Panduit CFPE1WHY)', qty: Math.ceil(idf.deviceCount * 0.1), unit: 'EA', unitCost: 2.50, laborHrs: 0.05 },
-                { item: 'Surface Mount Box 2-Port (Panduit CBX2WH-A)', qty: Math.ceil(idf.deviceCount * 0.1), unit: 'EA', unitCost: 8, laborHrs: 0.1 }
-            ]
-        },
-        cableRuns: {
-            materials: [
-                { item: 'CAT6A Plenum Blue', qty: Math.floor(idf.deviceCount * 0.7) * 150, unit: 'FT', unitCost: 0.42, laborHrs: 0.008 },
-                { item: 'CAT6A Plenum White', qty: Math.floor(idf.deviceCount * 0.3) * 150, unit: 'FT', unitCost: 0.42, laborHrs: 0.008 },
-                { item: 'J-Hook 2"', qty: Math.ceil((idf.deviceCount * 150) / 8), unit: 'EA', unitCost: 2.15, laborHrs: 0.05 },
-                { item: 'Cable Labels', qty: idf.deviceCount * 2, unit: 'EA', unitCost: 0.35, laborHrs: 0.02 }
-            ]
-        },
-        deviceInstall: {
-            materials: [
-                { item: 'Data Outlet Box', qty: idf.deviceCount, unit: 'EA', unitCost: 4.50, laborHrs: 0.15 },
-                { item: 'Faceplate 2-Port', qty: Math.floor(idf.deviceCount / 2), unit: 'EA', unitCost: 2.25, laborHrs: 0.05 },
-                { item: 'WAP Mounting Bracket', qty: Math.ceil(idf.deviceCount * 0.1), unit: 'EA', unitCost: 35, laborHrs: 0.5 }
-            ]
-        },
-        backboneReceive: {
-            materials: [
-                // Fiber Termination at IDF
-                { item: 'LC Duplex Connector (IDF side)', qty: 12, unit: 'EA', unitCost: 12.50, laborHrs: 0.25 },
-                { item: 'Fiber Fusion Splice', qty: 12, unit: 'EA', unitCost: 8, laborHrs: 0.3 },
-                { item: 'LC Fiber Pigtail OM4', qty: 12, unit: 'EA', unitCost: 8.50, laborHrs: 0.2 },
-                { item: 'Fiber Splice Tray', qty: 1, unit: 'EA', unitCost: 45, laborHrs: 0.5 },
-                { item: 'Fiber Patch Cord OM4 LC-LC 2m', qty: 12, unit: 'EA', unitCost: 15, laborHrs: 0.05 },
-                // Fiber Enclosure (already in deviceMaterial, but termination labor here)
-                { item: 'Fiber Enclosure Mounting', qty: 1, unit: 'EA', unitCost: 0, laborHrs: 1 },
-                // Voice Backbone Termination
-                { item: '66 Block (Voice)', qty: 2, unit: 'EA', unitCost: 35, laborHrs: 0.75 },
-                { item: '66 Block Connecting Block', qty: 4, unit: 'EA', unitCost: 12, laborHrs: 0.15 },
-                { item: '66 Block Mounting Bracket', qty: 1, unit: 'EA', unitCost: 18, laborHrs: 0.25 }
-            ]
-        }
-    }));
+    for (const item of items) {
+        const sectionKey = CATEGORY_TO_SECTION[item.category] || 'deviceMaterial';
+        const laborHrs = DEFAULT_LABOR_PER_CATEGORY[item.category] || 0.5;
 
-    return { mdf, idfs };
+        sections[sectionKey].push({
+            item: item.item_name,
+            qty: item.budgeted_qty || 1,
+            unit: (item.unit || 'EA').toUpperCase(),
+            unitCost: item.unit_cost || 0,
+            laborHrs: laborHrs,
+        });
+    }
+
+    // Add cable runs to cableRuns section
+    for (const cable of cableRuns) {
+        const cableTypeLabels = {
+            cat6a: 'CAT6A Plenum',
+            cat6: 'CAT6 Plenum',
+            cat5e: 'CAT5e Plenum',
+            fiber_sm: 'Singlemode Fiber',
+            fiber_mm: 'OM4 Multimode Fiber',
+            coax_rg6: 'RG6 Coax',
+        };
+        sections.cableRuns.push({
+            item: `${cableTypeLabels[cable.cable_type] || cable.cable_type} — ${cable.destination || 'drops'}`,
+            qty: cable.budgeted_qty || 0,
+            unit: 'FT',
+            unitCost: cable.cable_type?.includes('fiber') ? 2.85 : 0.42,
+            laborHrs: cable.cable_type?.includes('fiber') ? 0.02 : 0.008,
+        });
+    }
+
+    // Add financial category items (from Material Pricer) if they match this location
+    // This provides the real AI-analyzed pricing to supplement infrastructure items
+    if (financials?.categories) {
+        for (const cat of financials.categories) {
+            for (const fItem of (cat.items || [])) {
+                // Only add if not already in the sections (avoid duplicates)
+                const keyItems = Object.values(sections).flat().map(i => i.item.toLowerCase());
+                if (!keyItems.some(k => k.includes(fItem.name?.toLowerCase()?.substring(0, 15) || 'xxx'))) {
+                    const sectionKey = _guessSectionFromName(fItem.name);
+                    if (sectionKey) {
+                        sections[sectionKey].push({
+                            item: fItem.name,
+                            qty: fItem.qty || 1,
+                            unit: (fItem.unit || 'EA').toUpperCase(),
+                            unitCost: fItem.unitCost || fItem.extCost / (fItem.qty || 1) || 0,
+                            laborHrs: 0.5,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    const type = (location.type || 'idf').toUpperCase();
+
+    return {
+        name: location.name || type,
+        type: type === 'TR' ? 'IDF' : type,
+        floor: location.floor || 'Level 1',
+        buildout: { materials: sections.buildout },
+        deviceMaterial: { materials: sections.deviceMaterial },
+        terminations: { materials: sections.terminations },
+        cableRuns: { materials: sections.cableRuns },
+        deviceInstall: { materials: sections.deviceInstall },
+        // MDF gets backbone, IDF gets backboneReceive
+        ...(type === 'MDF'
+            ? { backbone: { materials: [] } }
+            : { backboneReceive: { materials: [] } }
+        ),
+    };
+}
+
+// ─── Guess BOM section from item name ───
+function _guessSectionFromName(name) {
+    if (!name) return null;
+    const n = name.toLowerCase();
+    if (n.includes('rack') || n.includes('cabinet') || n.includes('conduit') || n.includes('cable management') || n.includes('grounding') || n.includes('tmgb') || n.includes('tgb') || n.includes('backboard')) return 'buildout';
+    if (n.includes('cable') || n.includes('cat6') || n.includes('cat5') || n.includes('fiber') || n.includes('wire')) return 'cableRuns';
+    if (n.includes('jack') || n.includes('connector') || n.includes('patch cord') || n.includes('faceplate') || n.includes('termination')) return 'terminations';
+    if (n.includes('outlet') || n.includes('bracket') || n.includes('mount')) return 'deviceInstall';
+    return 'deviceMaterial';
+}
+
+// ─── Build BOM from local AI results (fallback) ───
+function _buildBOMFromLocalAnalysis(results) {
+    const closets = results.closets || [];
+    const mdfClosets = closets.filter(c => c.name?.toLowerCase().includes('mdf'));
+    const idfClosets = closets.filter(c => !c.name?.toLowerCase().includes('mdf'));
+
+    const mdf = mdfClosets.length > 0
+        ? _emptyCloset(mdfClosets[0].name || 'MDF', 'MDF', mdfClosets[0].floor || 'Level 1')
+        : _emptyCloset('MDF', 'MDF', 'Level 1');
+
+    const idfs = idfClosets.length > 0
+        ? idfClosets.map(c => _emptyCloset(c.name || 'IDF', 'IDF', c.floor || 'N/A'))
+        : [];
+
+    return {
+        mdf,
+        idfs,
+        source: 'local_analysis',
+        message: 'Import a SmartPlans JSON for detailed equipment data. Local analysis only detected room locations.'
+    };
+}
+
+// ─── Create an empty closet structure ───
+function _emptyCloset(name, type, floor) {
+    return {
+        name,
+        type,
+        floor,
+        buildout: { materials: [] },
+        deviceMaterial: { materials: [] },
+        terminations: { materials: [] },
+        cableRuns: { materials: [] },
+        deviceInstall: { materials: [] },
+        ...(type === 'MDF'
+            ? { backbone: { materials: [] } }
+            : { backboneReceive: { materials: [] } }
+        ),
+    };
 }
 
 // Calculate totals for a section
@@ -222,6 +271,8 @@ function BOMSection({ title, icon: Icon, materials, color, sectionKey, closetNam
     const [expanded, setExpanded] = useState(false);
     const totals = calcSectionTotals(materials);
 
+    if (materials.length === 0) return null; // Hide empty sections
+
     const isEditing = (item) => editingItem?.closet === closetName && editingItem?.section === sectionKey && editingItem?.item === item;
 
     return (
@@ -235,6 +286,7 @@ function BOMSection({ title, icon: Icon, materials, color, sectionKey, closetNam
                         <Icon className={`w-4 h-4 text-${color}-400`} />
                     </div>
                     <span className="font-medium text-white">{title}</span>
+                    <span className="text-xs text-slate-500">({materials.length} items)</span>
                 </div>
                 <div className="flex items-center gap-6">
                     <div className="text-right">
@@ -361,6 +413,7 @@ function ClosetCard({ closet, isExpanded, onToggle, customPrices, canEdit, onEdi
     const allMaterials = sections.flatMap(s => closet[s.key]?.materials || []);
     const totals = calcSectionTotals(allMaterials);
     const laborCost = totals.laborHours * calculateBlendedRate(DEFAULT_LABOR_RATES);
+    const hasItems = allMaterials.length > 0;
 
     return (
         <div className="bg-slate-900/50 rounded-2xl border border-slate-800/50 overflow-hidden">
@@ -376,30 +429,30 @@ function ClosetCard({ closet, isExpanded, onToggle, customPrices, canEdit, onEdi
                         <Server className="w-6 h-6 text-white" />
                     </div>
                     <div className="text-left">
-                        <h3 className="text-lg font-bold text-slate-800">{closet.name}</h3>
-                        <p className="text-sm text-slate-600">{closet.floor} • {closet.type}</p>
+                        <h3 className="text-lg font-bold text-white">{closet.name}</h3>
+                        <p className="text-sm text-slate-400">{closet.floor} • {closet.type}{!hasItems && <span className="ml-2 text-amber-400">(No items — import SmartPlans data)</span>}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-8">
                     <div className="text-right">
-                        <p className="text-xs text-slate-600 font-semibold">Material</p>
-                        <p className="text-lg font-bold text-emerald-600">${totals.materialCost.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+                        <p className="text-xs text-slate-400 font-semibold">Material</p>
+                        <p className="text-lg font-bold text-emerald-400">${totals.materialCost.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                     </div>
                     <div className="text-right">
-                        <p className="text-xs text-slate-600 font-semibold">Labor Hrs</p>
-                        <p className="text-lg font-bold text-cyan-600">{totals.laborHours.toFixed(0)}h</p>
+                        <p className="text-xs text-slate-400 font-semibold">Labor Hrs</p>
+                        <p className="text-lg font-bold text-cyan-400">{totals.laborHours.toFixed(0)}h</p>
                     </div>
                     <div className="text-right">
-                        <p className="text-xs text-slate-600 font-semibold">Labor Cost</p>
-                        <p className="text-lg font-bold text-amber-600">${laborCost.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+                        <p className="text-xs text-slate-400 font-semibold">Labor Cost</p>
+                        <p className="text-lg font-bold text-amber-400">${laborCost.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                     </div>
-                    {isExpanded ? <ChevronDown className="w-5 h-5 text-slate-600" /> : <ChevronRight className="w-5 h-5 text-slate-600" />}
+                    {isExpanded ? <ChevronDown className="w-5 h-5 text-slate-400" /> : <ChevronRight className="w-5 h-5 text-slate-400" />}
                 </div>
             </button>
 
             {isExpanded && (
                 <div className="p-5 pt-0 space-y-3">
-                    {sections.map(s => closet[s.key]?.materials && (
+                    {sections.map(s => closet[s.key]?.materials && closet[s.key].materials.length > 0 && (
                         <BOMSection
                             key={s.key}
                             sectionKey={s.key}
@@ -419,13 +472,19 @@ function ClosetCard({ closet, isExpanded, onToggle, customPrices, canEdit, onEdi
                             onClearCustomPrice={onClearCustomPrice}
                         />
                     ))}
+                    {allMaterials.length === 0 && (
+                        <div className="p-6 text-center bg-slate-800/20 rounded-xl border border-dashed border-slate-700">
+                            <FileJson className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                            <p className="text-slate-500">No items in this closet. Import a SmartPlans JSON file to populate.</p>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
     );
 }
 
-export default function DetailedBOM({ results, canEdit = true, laborRates = null }) {
+export default function DetailedBOM({ results, canEdit = true, laborRates = null, importedData = null }) {
     // Use passed rates or defaults
     const rates = laborRates || DEFAULT_LABOR_RATES;
     const blendedRate = calculateBlendedRate(rates);
@@ -436,7 +495,7 @@ export default function DetailedBOM({ results, canEdit = true, laborRates = null
     const [editPrice, setEditPrice] = useState('');
     const fileInputRef = React.useRef(null);
 
-    const bomData = generateDetailedBOM(results);
+    const bomData = generateDetailedBOM(results, importedData);
 
     // Apply custom prices to BOM data
     const applyCustomPrices = (closets) => {
@@ -550,11 +609,9 @@ export default function DetailedBOM({ results, canEdit = true, laborRates = null
                     const section = sectionIdx !== -1 ? cols[sectionIdx] : '';
 
                     if (!isNaN(price) && item) {
-                        // Try to match with closet/section if available
                         if (closet && section) {
                             newPrices[`${closet}-${section}-${item}`] = price;
                         } else {
-                            // Apply to all matching items
                             allClosets.forEach(c => {
                                 const sections = ['buildout', 'deviceMaterial', 'terminations', 'cableRuns', 'deviceInstall', 'backbone', 'backboneReceive'];
                                 sections.forEach(s => {
@@ -601,6 +658,21 @@ export default function DetailedBOM({ results, canEdit = true, laborRates = null
 
     return (
         <div className="space-y-6">
+            {/* Data Source Indicator */}
+            {bomData.source && (
+                <div className={`p-3 rounded-xl border text-sm ${
+                    bomData.source === 'smartplans_import'
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                        : bomData.source === 'empty'
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                        : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                }`}>
+                    {bomData.source === 'smartplans_import' && `✅ Loaded from SmartPlans AI analysis — ${bomData.financialSummary?.totalLineItems || 0} line items across ${bomData.financialSummary?.categories || 0} categories`}
+                    {bomData.source === 'local_analysis' && '📊 BOM from local analysis — import SmartPlans JSON for full equipment data'}
+                    {bomData.source === 'empty' && '⚠️ No data loaded — import a SmartPlans JSON file to populate the BOM'}
+                </div>
+            )}
+
             {/* Summary Cards */}
             <div className="grid grid-cols-4 gap-4">
                 <div className="p-5 bg-slate-900/50 rounded-2xl border border-slate-800/50">
@@ -692,40 +764,19 @@ export default function DetailedBOM({ results, canEdit = true, laborRates = null
                 </div>
             )}
 
-            {/* MDF */}
-            <ClosetCard
-                closet={allClosets[0]}
-                isExpanded={expandedCloset === 'MDF'}
-                onToggle={() => setExpandedCloset(expandedCloset === 'MDF' ? null : 'MDF')}
-                customPrices={customPrices}
-                canEdit={canEdit}
-                onEditPrice={(section, item, currentPrice) => {
-                    if (!canEdit) return;
-                    setEditingItem({ closet: 'MDF', section, item });
-                    setEditPrice(currentPrice.toString());
-                }}
-                editingItem={editingItem}
-                editPrice={editPrice}
-                onEditPriceChange={setEditPrice}
-                onSavePrice={() => handleSavePrice(editingItem.closet, editingItem.section, editingItem.item)}
-                onCancelEdit={() => { setEditingItem(null); setEditPrice(''); }}
-                onClearCustomPrice={clearCustomPrice}
-            />
-
-            {/* IDFs */}
-            <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-white">IDF Closets</h3>
-                {allClosets.slice(1).map(idf => (
+            {/* Closets */}
+            {allClosets.length > 0 && (
+                <>
+                    {/* MDF */}
                     <ClosetCard
-                        key={idf.name}
-                        closet={idf}
-                        isExpanded={expandedCloset === idf.name}
-                        onToggle={() => setExpandedCloset(expandedCloset === idf.name ? null : idf.name)}
+                        closet={allClosets[0]}
+                        isExpanded={expandedCloset === allClosets[0]?.name}
+                        onToggle={() => setExpandedCloset(expandedCloset === allClosets[0]?.name ? null : allClosets[0]?.name)}
                         customPrices={customPrices}
                         canEdit={canEdit}
                         onEditPrice={(section, item, currentPrice) => {
                             if (!canEdit) return;
-                            setEditingItem({ closet: idf.name, section, item });
+                            setEditingItem({ closet: allClosets[0]?.name, section, item });
                             setEditPrice(currentPrice.toString());
                         }}
                         editingItem={editingItem}
@@ -735,8 +786,36 @@ export default function DetailedBOM({ results, canEdit = true, laborRates = null
                         onCancelEdit={() => { setEditingItem(null); setEditPrice(''); }}
                         onClearCustomPrice={clearCustomPrice}
                     />
-                ))}
-            </div>
+
+                    {/* IDFs */}
+                    {allClosets.length > 1 && (
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-semibold text-white">IDF / TR Closets</h3>
+                            {allClosets.slice(1).map(idf => (
+                                <ClosetCard
+                                    key={idf.name}
+                                    closet={idf}
+                                    isExpanded={expandedCloset === idf.name}
+                                    onToggle={() => setExpandedCloset(expandedCloset === idf.name ? null : idf.name)}
+                                    customPrices={customPrices}
+                                    canEdit={canEdit}
+                                    onEditPrice={(section, item, currentPrice) => {
+                                        if (!canEdit) return;
+                                        setEditingItem({ closet: idf.name, section, item });
+                                        setEditPrice(currentPrice.toString());
+                                    }}
+                                    editingItem={editingItem}
+                                    editPrice={editPrice}
+                                    onEditPriceChange={setEditPrice}
+                                    onSavePrice={() => handleSavePrice(editingItem.closet, editingItem.section, editingItem.item)}
+                                    onCancelEdit={() => { setEditingItem(null); setEditPrice(''); }}
+                                    onClearCustomPrice={clearCustomPrice}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </>
+            )}
         </div>
     );
 }
