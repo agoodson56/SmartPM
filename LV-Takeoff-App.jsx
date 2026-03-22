@@ -22,13 +22,8 @@ export default function LVTakeoffSystem() {
   const [confirmedSymbols, setConfirmedSymbols] = useState([]);
   const [projectSettings, setProjectSettings] = useState(DEFAULT_SETTINGS);
   const [userRole, setUserRole] = useState('viewer'); // 'estimator', 'pm', 'viewer'
-  // Passwords loaded from localStorage — no hardcoded defaults
-  const [passwords, setPasswords] = useState(() => {
-    try {
-      const saved = localStorage.getItem('lv-takeoff-passwords');
-      return saved ? JSON.parse(saved) : { estimator: '', pm: '' };
-    } catch { return { estimator: '', pm: '' }; }
-  });
+  // Passwords loaded from server — no localStorage
+  const [passwords, setPasswords] = useState({ estimator: '', pm: '' });
   const [showPasswordModal, setShowPasswordModal] = useState(null); // null or role name
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -52,12 +47,20 @@ export default function LVTakeoffSystem() {
     loadStats();
   }, []);
 
-  // Persist passwords to localStorage when changed
+  // Load passwords from server on mount
   useEffect(() => {
-    if (passwords.estimator || passwords.pm) {
-      localStorage.setItem('lv-takeoff-passwords', JSON.stringify(passwords));
-    }
-  }, [passwords]);
+    const loadPasswords = async () => {
+      try {
+        const { getSetting } = await import('./src/services/smartpmApi.js');
+        const serverPasswords = await getSetting('passwords');
+        if (serverPasswords && (serverPasswords.estimator || serverPasswords.pm)) {
+          setPasswords(serverPasswords);
+          console.log('[SmartPM] Passwords loaded from server');
+        }
+      } catch (e) { console.warn('[SmartPM] Could not load passwords from server:', e.message); }
+    };
+    loadPasswords();
+  }, []);
 
   // ─── SmartPlans JSON Import Handler ───
   const handleSmartPlansImport = useCallback((e) => {

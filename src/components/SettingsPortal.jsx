@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Settings, DollarSign, Percent, Shield, Clock, Users, Wrench, Save, RotateCcw } from 'lucide-react';
+import { Settings, DollarSign, Percent, Shield, Clock, Users, Wrench, Save, RotateCcw, Loader2 } from 'lucide-react';
+import { deleteAllProjectLogs, saveSetting } from '../services/smartpmApi.js';
 
 const DEFAULT_SETTINGS = {
     laborRates: {
@@ -84,7 +85,7 @@ function InputField({ label, value, onChange, prefix, suffix, type = 'number', s
 
 export default function SettingsPortal({ settings, onSettingsChange, passwords, onPasswordsChange, onResetProgress }) {
     const [localSettings, setLocalSettings] = useState(settings || DEFAULT_SETTINGS);
-    const [localPasswords, setLocalPasswords] = useState(passwords || { estimator: 'Admin123', pm: 'Admin123' });
+    const [localPasswords, setLocalPasswords] = useState(passwords || { estimator: '', pm: '' });
     const [saved, setSaved] = useState(false);
     const [showResetConfirm, setShowResetConfirm] = useState(false);
     const [resetComplete, setResetComplete] = useState(false);
@@ -100,9 +101,16 @@ export default function SettingsPortal({ settings, onSettingsChange, passwords, 
         setSaved(false);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         onSettingsChange(localSettings);
         if (onPasswordsChange) onPasswordsChange(localPasswords);
+        // Save passwords to server
+        try {
+            await saveSetting('passwords', localPasswords);
+            console.log('[SmartPM] Passwords saved to server');
+        } catch (err) {
+            console.warn('[SmartPM] Failed to save passwords to server:', err.message);
+        }
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
     };
@@ -417,9 +425,14 @@ export default function SettingsPortal({ settings, onSettingsChange, passwords, 
                             </p>
                             <div className="flex items-center gap-3">
                                 <button
-                                    onClick={() => {
-                                        // Clear localStorage for daily logs
-                                        localStorage.removeItem('lv-takeoff-daily-logs');
+                                    onClick={async () => {
+                                        // Delete all logs from server
+                                        try {
+                                            await deleteAllProjectLogs('default');
+                                            console.log('🗑️ Cleared all daily log entries from server');
+                                        } catch (err) {
+                                            console.error('Failed to clear logs from server:', err);
+                                        }
                                         // Call the callback if provided
                                         if (onResetProgress) {
                                             onResetProgress();
@@ -427,7 +440,6 @@ export default function SettingsPortal({ settings, onSettingsChange, passwords, 
                                         setShowResetConfirm(false);
                                         setResetComplete(true);
                                         setTimeout(() => setResetComplete(false), 3000);
-                                        console.log('🗑️ Cleared all daily log entries from localStorage');
                                     }}
                                     className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
                                 >

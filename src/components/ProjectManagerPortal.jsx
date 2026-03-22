@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, Calendar, Clock, Package, CheckCircle, AlertTriangle, Save, Plus, Trash2, ChevronDown, ChevronRight, BarChart3, Target } from 'lucide-react';
-
-// LocalStorage key for daily logs
-const STORAGE_KEY = 'lv-takeoff-daily-logs';
+import { User, Calendar, Clock, Package, CheckCircle, AlertTriangle, Save, Plus, Trash2, ChevronDown, ChevronRight, BarChart3, Target, Loader2 } from 'lucide-react';
+import { fetchDailyLogs, saveDailyLog, deleteDailyLog, deleteAllProjectLogs } from '../services/smartpmApi.js';
 
 // Initial progress state generator
 export function initializeProgress(bomData) {
@@ -337,22 +335,34 @@ function ModuleCard({ module, canEdit, onUpdate, dailyLogs, onAddLog, onDeleteLo
     );
 }
 
-export default function ProjectManagerPortal({ bomData, canEdit = true }) {
+export default function ProjectManagerPortal({ bomData, canEdit = true, projectId = 'default' }) {
     const [modules, setModules] = useState(() => initializeProgress(bomData));
     const [dailyLogs, setDailyLogs] = useState([]);
     const [activeCloset, setActiveCloset] = useState('ALL');
     const [isLoaded, setIsLoaded] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [syncError, setSyncError] = useState(null);
 
-    // Load daily logs from localStorage on mount
+    // Load daily logs from server on mount
     useEffect(() => {
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                const parsedLogs = JSON.parse(saved);
-                setDailyLogs(parsedLogs);
+        const loadLogs = async () => {
+            try {
+                const serverLogs = await fetchDailyLogs(projectId);
+                // Map server format to component format
+                const mappedLogs = serverLogs.map(log => ({
+                    id: log.id,
+                    moduleId: log.module_id,
+                    item: log.item,
+                    unit: log.unit,
+                    qtyInstalled: log.qty_installed,
+                    hoursUsed: log.hours_used,
+                    date: log.logged_at,
+                    notes: log.notes,
+                }));
+                setDailyLogs(mappedLogs);
                 // Apply loaded logs to modules
                 const updated = initializeProgress(bomData);
-                parsedLogs.forEach(log => {
+                mappedLogs.forEach(log => {
                     const module = updated.find(m => m.id === log.moduleId);
                     if (module) {
                         const material = module.materials.find(m => m.item === log.item);
@@ -363,25 +373,16 @@ export default function ProjectManagerPortal({ bomData, canEdit = true }) {
                     }
                 });
                 setModules(updated);
-                console.log(`✅ Loaded ${parsedLogs.length} daily log entries from localStorage`);
-            }
-        } catch (err) {
-            console.error('Failed to load daily logs from localStorage:', err);
-        }
-        setIsLoaded(true);
-    }, []);
-
-    // Save daily logs to localStorage whenever they change
-    useEffect(() => {
-        if (isLoaded) {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(dailyLogs));
-                console.log(`💾 Saved ${dailyLogs.length} daily log entries to localStorage`);
+                console.log(`✅ Loaded ${mappedLogs.length} daily log entries from server`);
+                setSyncError(null);
             } catch (err) {
-                console.error('Failed to save daily logs to localStorage:', err);
+                console.error('Failed to load daily logs from server:', err);
+                setSyncError('Failed to load logs from server. Data may not be synced.');
             }
-        }
-    }, [dailyLogs, isLoaded]);
+            setIsLoaded(true);
+        };
+        loadLogs();
+    }, [projectId]);
 
     // Apply logs to modules
     const applyLogs = (logs) => {
@@ -400,16 +401,45 @@ export default function ProjectManagerPortal({ bomData, canEdit = true }) {
         return updated;
     };
 
-    const handleAddLog = (log) => {
-        const newLogs = [...dailyLogs, log];
-        setDailyLogs(newLogs);
-        setModules(applyLogs(newLogs));
+    const handleAddLog = async (log) => {
+        setIsSaving(true);
+        try {
+            // Save to server first
+            await saveDailyLog({ ...log, projectId });
+            // Then update local state
+            const newLogs = [...dailyLogs, log];
+            setDailyLogs(newLogs);
+            setModules(applyLogs(newLogs));
+            setSyncError(null);
+            console.log(`💾 Saved log to server: ${log.item}`);
+        } catch (err) {
+            console.error('Failed to save log to server:', err);
+            setSyncError('Failed to save log to server. Please try again.');
+            // Still update locally so UI is responsive
+            const newLogs = [...dailyLogs, log];
+            setDailyLogs(newLogs);
+            setModules(applyLogs(newLogs));
+        }
+        setIsSaving(false);
     };
 
-    const handleDeleteLog = (logId) => {
-        const newLogs = dailyLogs.filter(l => l.id !== logId);
-        setDailyLogs(newLogs);
-        setModules(applyLogs(newLogs));
+    const handleDeleteLog = async (logId) => {
+        setIsSaving(true);
+        try {
+            await deleteDailyLog(logId);
+            const newLogs = dailyLogs.filter(l => l.id !== logId);
+            setDailyLogs(newLogs);
+            setModules(applyLogs(newLogs));
+            setSyncError(null);
+        } catch (err) {
+            console.error('Failed to delete log from server:', err);
+            setSyncError('Failed to delete log from server.');
+            // Still update locally
+            const newLogs = dailyLogs.filter(l => l.id !== logId);
+            setDailyLogs(newLogs);
+            setModules(applyLogs(newLogs));
+        }
+        setIsSaving(false);
     };
 
     // Calculate project-level stats
