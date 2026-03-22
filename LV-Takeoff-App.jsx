@@ -1481,13 +1481,8 @@ export default function LVTakeoffSystem() {
                 <p className="text-slate-500">Takeoff completed • {new Date(results.processedAt).toLocaleString()}</p>
               </div>
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setShowOverlay(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-black-medium border border-gold/50 text-gold rounded-xl shadow-lg shadow-gold/20 hover:bg-gold/10 hover:border-gold hover:shadow-xl hover:scale-105 transition-all font-medium"
-                >
-                  <Eye className="w-4 h-4" />
-                  👁️ View Overlays
-                </button>
+
+
                 <button className="flex items-center gap-2 px-4 py-2.5 bg-black-medium border border-gold text-gold rounded-xl shadow-lg shadow-gold/20 hover:bg-gold hover:text-black hover:shadow-xl transition-all font-medium">
                   <Download className="w-4 h-4" />
                   Export Package

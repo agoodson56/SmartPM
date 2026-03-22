@@ -399,7 +399,7 @@ export default function SettingsPortal({ settings, onSettingsChange, passwords, 
                     />
                 </div>
                 <p className="text-xs text-slate-500 mt-2">
-                    Default password: Admin123 • Click "Save Settings" to apply changes
+                    Passwords are stored securely on the server. Click "Save Settings" to apply changes.
                 </p>
             </SettingCard>
 
