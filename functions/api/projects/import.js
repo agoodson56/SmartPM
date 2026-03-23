@@ -33,8 +33,9 @@ function extractBOMFromMarkdown(markdown) {
     const heading = h2Match ? h2Match[1].replace(/\*+/g, '').trim() : (boldMatch ? boldMatch[1].trim() : null);
 
     if (heading) {
-      const isCategory = /material|cost|pricing|equipment|cabling|cctv|camera|access|fire|alarm|intrusion|audio|visual|av\b|structured|backbone|infrastructure|mdf|idf|misc|general|conduit|pathway|rack|panel|device|summary|breakdown|bill|bom/i.test(heading);
-      const isNonCategory = /confidence|methodology|timeline|schedule|rfi|risk|note|assumption|disclaimer|verification|validation|labor|phase|rough|trim|programming|testing|commissioning|what to do|next step/i.test(heading);
+      const isCategory = /material|cost|pricing|equipment|cabling|cctv|camera|access|fire|alarm|intrusion|audio|visual|av\b|structured|backbone|infrastructure|mdf|idf|misc|general|conduit|pathway|rack|panel|device|breakdown|bill|bom/i.test(heading);
+      // Exclude summary/rollup sections that re-state subtotals (causes double-counting)
+      const isNonCategory = /confidence|methodology|timeline|schedule|rfi|risk|note|assumption|disclaimer|verification|validation|labor|phase|rough|trim|programming|testing|commissioning|what to do|next step|project cost summary|cost summary|investment summary|financial summary|budget summary/i.test(heading);
       if (isCategory && !isNonCategory) {
         if (currentCategory && currentCategory.items.length > 0) categories.push(currentCategory);
         currentCategory = { name: heading, items: [], subtotal: 0 };
@@ -169,14 +170,25 @@ export async function onRequestPost(context) {
 
     if (financials && financials.grandTotal > 0 && financials.categories && financials.categories.length > 0) {
       // v3.0+ export — use pre-structured financial data directly
+      // The grandTotal is now set by _extractAIGrandTotal (the AI's actual sell price)
       bom = financials;
       contractValue = financials.grandTotal;
     } else {
       // v2.0 fallback — parse raw markdown for BOM tables
       bom = extractBOMFromMarkdown(rawMarkdown);
+      // Prefer the AI's actual grand total from the text over the BOM line-item sum
       contractValue = extractGrandTotal(rawMarkdown);
       if (contractValue === 0 && bom.grandTotal > 0) {
         contractValue = bom.grandTotal;
+      }
+    }
+
+    // If financials.grandTotal was from BOM sum (old export), try to get the real AI total
+    if (contractValue > 0 && rawMarkdown) {
+      const aiTotal = extractGrandTotal(rawMarkdown);
+      if (aiTotal > 0 && aiTotal < contractValue * 0.95) {
+        // The AI's actual total is significantly lower — use it (BOM was double-counting)
+        contractValue = aiTotal;
       }
     }
 
