@@ -1,0 +1,3 @@
+-- Add estimate revision history (for SmartPlans integration)
+-- Note: This table is in the SmartPlans DB, not SmartPM
+-- Included here as reference for the migration system pattern

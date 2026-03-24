@@ -1,0 +1,16 @@
+{
+  "name": "smartpm",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx wrangler pages dev . --d1 DB=smartpm-db --port 3000",
+    "deploy": "npx wrangler pages deploy .",
+    "db:init": "npx wrangler d1 execute smartpm-db --file=schema.sql",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0",
+    "wrangler": "^4.63.0"
+  }
+}

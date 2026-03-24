@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartPM — ELV Construction Project Manager</title>
+  <meta name="description"
+    content="SmartPM — Professional ELV construction project management powered by SmartPlans. Import estimates, track SOV, billing, change orders, RFIs, submittals, and more.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏗️</text></svg>">
+</head>
+
+<body>
+  <div id="app"></div>
+  <script
+    src="https://js.sentry-cdn.com/60b02e5d7804fc77476c97324b9039e5.min.js"
+    crossorigin="anonymous"
+  ></script>
+  <script>
+    if (typeof Sentry !== 'undefined') {
+      Sentry.init({
+        dsn: "https://60b02e5d7804fc77476c97324b9039e5@o4511099720957952.ingest.us.sentry.io/4511099752284160",
+        environment: location.hostname.includes('localhost') ? 'development' : 'production',
+        release: 'smartpm@1.0.0',
+        tracesSampleRate: 0.1,
+        replaysSessionSampleRate: 0,
+        replaysOnErrorSampleRate: 1.0,
+      });
+      Sentry.setTag('app', 'smartpm');
+      console.log('[SmartPM] Sentry error tracking initialized');
+    }
+  </script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+  <script src="infrastructure.js"></script>
+  <script src="modules.js"></script>
+  <script src="ai-assistant.js"></script>
+</body>
+
+</html>
