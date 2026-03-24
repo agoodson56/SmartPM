@@ -256,16 +256,23 @@ textarea:focus {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 15px;
   color: var(--text-primary);
   cursor: pointer;
   user-select: none;
 }
 
+.app-header-brand img {
+  display: block;
+  height: 36px;
+  width: auto;
+}
+
 .app-header-brand span {
   color: #0D9488;
-  font-weight: 800;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .app-header-nav {

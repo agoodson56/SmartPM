@@ -170,12 +170,13 @@ const App = {
       <div class="app-shell">
         <header class="app-header">
           <div class="app-header-brand" onclick="App.navigate('dashboard')">
-            <span>🏗️ SmartPM</span>
+            <img src="smartplans-logo.png" alt="SmartPM" height="36">
+            <span>SmartPM</span>
           </div>
           <nav class="app-header-nav">
             <button class="header-nav-btn ${this.state.route === 'dashboard' ? 'active' : ''}" onclick="App.navigate('dashboard')">Dashboard</button>
-            ${this.Permissions.can('canManagePasswords') ? '<button class="header-nav-btn" onclick="App.showPasswordModal()">🔑 Manage Users</button>' : ''}
-            <a href="user-guide.html" target="_blank" rel="noopener" class="header-nav-btn" style="text-decoration:none;">📖 User Guide</a>
+            ${this.Permissions.can('canManagePasswords') ? '<button class="header-nav-btn" onclick="App.showPasswordModal()">Manage Users</button>' : ''}
+            <a href="user-guide.html" target="_blank" rel="noopener" class="header-nav-btn" style="text-decoration:none;">User Guide</a>
           </nav>
           <div class="app-header-right">
             <div class="header-user">
