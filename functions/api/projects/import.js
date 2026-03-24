@@ -145,6 +145,11 @@ export async function onRequestPost(context) {
   const { env, request, data } = context;
 
   try {
+    const contentLength = parseInt(request.headers.get('Content-Length') || '0');
+    if (contentLength > 10 * 1024 * 1024) {
+        return Response.json({ error: 'PAYLOAD_TOO_LARGE', message: 'Import file exceeds 10 MB limit.' }, { status: 413 });
+    }
+
     const pkg = await request.json();
 
     // Validate SmartPlans format
@@ -171,7 +176,14 @@ export async function onRequestPost(context) {
     const rfis = pkg.rfis || {};
     const userInputs = pkg.userInputs || {};
     const id = crypto.randomUUID().replace(/-/g, '');
-    const importId = pkg._meta.generatedAt || new Date().toISOString();
+    const importHashData = JSON.stringify({
+        name: (pkg.project || {}).name,
+        total: (pkg.financials || {}).grandTotal,
+        at: pkg._meta.generatedAt,
+        cats: ((pkg.financials || {}).categories || []).length,
+    });
+    const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(importHashData));
+    const importId = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 
     // Check for duplicate imports
     const existing = await env.DB.prepare(
@@ -607,6 +619,6 @@ export async function onRequestPost(context) {
     }, { status: 201 });
   } catch (err) {
     console.error('Import error:', err);
-    return Response.json({ error: 'IMPORT_FAILED', message: 'Failed to import SmartPlans data: ' + err.message }, { status: 500 });
+    return Response.json({ error: 'IMPORT_FAILED', message: 'Import failed. Please check the file format and try again.' }, { status: 500 });
   }
 }

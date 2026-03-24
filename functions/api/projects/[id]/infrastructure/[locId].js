@@ -16,8 +16,13 @@ function canEditBudget(role) {
 }
 
 export async function onRequestGet(context) {
-    const { env, params } = context;
+    const { env, params, data } = context;
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const loc = await env.DB.prepare(
             `SELECT * FROM locations WHERE id = ? AND project_id = ?`
         ).bind(params.locId, params.id).first();
@@ -71,6 +76,11 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
     const { env, request, params, data } = context;
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const body = await request.json();
         const action = body.action;
         const id = crypto.randomUUID().replace(/-/g, '');
@@ -258,6 +268,10 @@ export async function onRequestPost(context) {
 
 export async function onRequestPut(context) {
     const { env, request, params, data } = context;
+    const project = await data.verifyProjectAccess(params.id);
+    if (!project) {
+        return Response.json({ error: 'Project not found' }, { status: 404 });
+    }
     // Only admin/ops can modify location metadata
     if (!canEditBudget(data.user.role)) {
         return Response.json({ error: 'Only admin or ops manager can modify location settings' }, { status: 403 });
@@ -283,6 +297,10 @@ export async function onRequestPut(context) {
 
 export async function onRequestDelete(context) {
     const { env, params, data } = context;
+    const project = await data.verifyProjectAccess(params.id);
+    if (!project) {
+        return Response.json({ error: 'Project not found' }, { status: 404 });
+    }
     // Only admin can delete locations
     if (data.user.role !== 'admin') {
         return Response.json({ error: 'Only admin can delete infrastructure locations' }, { status: 403 });

@@ -5,11 +5,11 @@
 // ═══════════════════════════════════════════════════════════════
 
 export async function onRequestGet(context) {
-    const { env, params } = context;
+    const { env, params, data } = context;
     const id = params.id;
 
     try {
-        const project = await env.DB.prepare(`SELECT * FROM projects WHERE id = ?`).bind(id).first();
+        const project = await data.verifyProjectAccess(id);
         if (!project) {
             return Response.json({ error: 'Project not found' }, { status: 404 });
         }
@@ -40,6 +40,11 @@ export async function onRequestPut(context) {
     const id = params.id;
 
     try {
+        const project = await data.verifyProjectAccess(id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const body = await request.json();
 
         // Build dynamic UPDATE
@@ -98,10 +103,15 @@ export async function onRequestPut(context) {
 }
 
 export async function onRequestDelete(context) {
-    const { env, params } = context;
+    const { env, params, data } = context;
     const id = params.id;
 
     try {
+        const project = await data.verifyProjectAccess(id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         // Disable FK constraints for clean cascade delete
         await env.DB.prepare(`PRAGMA foreign_keys = OFF`).run();
 

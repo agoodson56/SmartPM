@@ -5,6 +5,11 @@
 export async function onRequestPut(context) {
     const { env, request, params, data } = context;
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const body = await request.json();
         const fields = [];
         const values = [];

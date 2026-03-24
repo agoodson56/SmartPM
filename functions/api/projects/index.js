@@ -4,13 +4,19 @@
 // ═══════════════════════════════════════════════════════════════
 
 export async function onRequestGet(context) {
-    const { env, request } = context;
+    const { env, request, data } = context;
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
 
     try {
         let query = `SELECT * FROM projects WHERE 1=1`;
         const binds = [];
+
+        // Non-admin users only see their own projects
+        if (data.user.role !== 'admin') {
+            query += ` AND created_by = ?`;
+            binds.push(data.user.id);
+        }
 
         if (status) {
             query += ` AND status = ?`;

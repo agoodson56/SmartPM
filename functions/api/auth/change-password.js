@@ -84,6 +84,13 @@ export async function onRequestPost(context) {
 
         console.log(`[Auth] Password changed for ${target_username} by ${data.user.username} (PBKDF2)`);
 
+        try {
+            await env.DB.prepare(
+                `INSERT INTO activity_log (project_id, user_id, action, entity_type, entity_id, description)
+                 VALUES (NULL, ?, 'password_change', 'user', ?, ?)`
+            ).bind(data.user.id, targetUser.id, `Password changed for ${target_username} by ${data.user.username}`).run();
+        } catch (e) { /* audit log failure shouldn't block the operation */ }
+
         return Response.json({ success: true, message: `Password updated for ${target_username}` });
     } catch (err) {
         console.error('Change password error:', err);

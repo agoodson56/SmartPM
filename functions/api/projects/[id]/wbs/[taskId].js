@@ -7,6 +7,11 @@ export async function onRequestPut(context) {
   const { id: projectId, taskId } = params;
 
   try {
+    const project = await data.verifyProjectAccess(projectId);
+    if (!project) {
+      return Response.json({ error: 'Project not found' }, { status: 404 });
+    }
+
     const body = await request.json();
 
     // Build dynamic UPDATE statement based on provided fields
@@ -124,6 +129,11 @@ export async function onRequestDelete(context) {
   const { id: projectId, taskId } = params;
 
   try {
+    const project = await data.verifyProjectAccess(projectId);
+    if (!project) {
+      return Response.json({ error: 'Project not found' }, { status: 404 });
+    }
+
     // Delete the task (CASCADE will delete children)
     await env.DB.prepare(
       `DELETE FROM wbs_tasks WHERE id = ? AND project_id = ?`

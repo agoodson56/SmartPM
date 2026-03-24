@@ -47,6 +47,18 @@ export async function onRequest(context) {
         };
         data.token = token;
 
+        // Project access verification helper — ownership check (admin bypasses)
+        data.verifyProjectAccess = async (projectId) => {
+            if (!projectId) return null;
+            const query = data.user.role === 'admin'
+                ? 'SELECT * FROM projects WHERE id = ?'
+                : 'SELECT * FROM projects WHERE id = ? AND created_by = ?';
+            const binds = data.user.role === 'admin'
+                ? [projectId]
+                : [projectId, data.user.id];
+            return await env.DB.prepare(query).bind(...binds).first();
+        };
+
         // DB retry helper for transient D1 failures
         data.dbRetry = async (preparedStmt, maxRetries = 2) => {
             for (let attempt = 0; attempt <= maxRetries; attempt++) {

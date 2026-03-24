@@ -4,11 +4,16 @@
 // ═══════════════════════════════════════════════════════════════
 
 export async function onRequestGet(context) {
-    const { env, params, request } = context;
+    const { env, params, request, data } = context;
     const url = new URL(request.url);
     const metaOnly = url.searchParams.get('meta') === 'true';
 
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const doc = await env.DB.prepare(
             `SELECT id, project_id, category, filename, original_name, file_size, mime_type, description, uploaded_by, created_at
              FROM documents WHERE id = ? AND project_id = ?`
@@ -46,6 +51,11 @@ export async function onRequestGet(context) {
 export async function onRequestDelete(context) {
     const { env, params, data } = context;
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const doc = await env.DB.prepare(
             `SELECT id, original_name FROM documents WHERE id = ? AND project_id = ?`
         ).bind(params.docId, params.id).first();

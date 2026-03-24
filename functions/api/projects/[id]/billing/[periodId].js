@@ -4,8 +4,13 @@
 // ═══════════════════════════════════════════════════════════════
 
 export async function onRequestGet(context) {
-    const { env, params } = context;
+    const { env, params, data } = context;
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const period = await env.DB.prepare(
             `SELECT * FROM billing_periods WHERE id = ? AND project_id = ?`
         ).bind(params.periodId, params.id).first();
@@ -30,6 +35,11 @@ export async function onRequestGet(context) {
 export async function onRequestPut(context) {
     const { env, request, params, data } = context;
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const body = await request.json();
 
         // Update period header

@@ -6,11 +6,16 @@
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB limit for D1 storage
 
 export async function onRequestGet(context) {
-    const { env, params, request } = context;
+    const { env, params, request, data } = context;
     const url = new URL(request.url);
     const category = url.searchParams.get('category');
 
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         let query = `SELECT id, project_id, category, filename, original_name, file_size, mime_type, description, uploaded_by, created_at FROM documents WHERE project_id = ?`;
         const binds = [params.id];
 
@@ -38,6 +43,11 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
     const { env, request, params, data } = context;
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const body = await request.json();
 
         if (!body.name || !body.category) {

@@ -3,8 +3,13 @@
 // ═══════════════════════════════════════════════════════════════
 
 export async function onRequestGet(context) {
-    const { env, params } = context;
+    const { env, params, data } = context;
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const result = await env.DB.prepare(
             `SELECT * FROM contacts WHERE project_id = ? OR project_id IS NULL ORDER BY role ASC, name ASC`
         ).bind(params.id).all();

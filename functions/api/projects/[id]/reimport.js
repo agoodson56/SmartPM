@@ -135,11 +135,8 @@ export async function onRequestPost(context) {
   const projectId = params.id;
 
   try {
-    // ── Validate project exists ──
-    const project = await env.DB.prepare(
-      'SELECT id, name, smartplans_import_id FROM projects WHERE id = ?'
-    ).bind(projectId).first();
-
+    // ── Validate project exists and user has access ──
+    const project = await data.verifyProjectAccess(projectId);
     if (!project) {
       return Response.json({ error: 'Project not found' }, { status: 404 });
     }

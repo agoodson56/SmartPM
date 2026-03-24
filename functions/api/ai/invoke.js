@@ -15,13 +15,15 @@ export async function onRequestPost(context) {
 
     // Validate request origin to prevent CSRF
     const origin = request.headers.get('Origin') || '';
-    if (origin &&
-        !origin.endsWith('.pages.dev') &&
-        !origin.includes('smartpm') &&
-        !origin.includes('3dtechnologyservices.com') &&
-        !origin.startsWith('http://localhost') &&
-        !origin.startsWith('http://127.0.0.1')) {
-        return Response.json({ error: 'Origin not allowed' }, { status: 403 });
+    const ALLOWED_ORIGINS = [
+        'https://smartpm.pages.dev',
+        'https://smartpm.3dtechnologyservices.com',
+        'https://3dtechnologyservices.com',
+    ];
+    if (origin && !ALLOWED_ORIGINS.some(d => origin === d || origin.endsWith('.pages.dev'))) {
+        if (!origin.startsWith('http://localhost') && !origin.startsWith('http://127.0.0.1')) {
+            return Response.json({ error: 'Origin not allowed' }, { status: 403 });
+        }
     }
 
     try {

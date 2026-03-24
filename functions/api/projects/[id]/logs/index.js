@@ -4,11 +4,16 @@
 // ═══════════════════════════════════════════════════════════════
 
 export async function onRequestGet(context) {
-    const { env, params, request } = context;
+    const { env, params, request, data } = context;
     const url = new URL(request.url);
     const month = url.searchParams.get('month'); // format: YYYY-MM
 
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         let query = `SELECT * FROM daily_logs WHERE project_id = ?`;
         const binds = [params.id];
 
@@ -30,6 +35,11 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
     const { env, request, params, data } = context;
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const body = await request.json();
         const logDate = body.log_date || new Date().toISOString().split('T')[0];
 

@@ -7,6 +7,11 @@ export async function onRequestGet(context) {
   const projectId = params.id;
 
   try {
+    const project = await data.verifyProjectAccess(projectId);
+    if (!project) {
+      return Response.json({ error: 'Project not found' }, { status: 404 });
+    }
+
     // Get all WBS tasks for this project
     const tasks = await env.DB.prepare(`
       SELECT * FROM wbs_tasks WHERE project_id = ? ORDER BY sort_order ASC
@@ -72,6 +77,11 @@ export async function onRequestPost(context) {
   const projectId = params.id;
 
   try {
+    const project = await data.verifyProjectAccess(projectId);
+    if (!project) {
+      return Response.json({ error: 'Project not found' }, { status: 404 });
+    }
+
     const body = await request.json();
     const id = crypto.randomUUID().replace(/-/g, '');
 

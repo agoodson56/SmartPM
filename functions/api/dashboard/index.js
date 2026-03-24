@@ -3,56 +3,106 @@
 // ═══════════════════════════════════════════════════════════════
 
 export async function onRequestGet(context) {
-    const { env } = context;
+    const { env, data } = context;
+    const isAdmin = data.user.role === 'admin';
+    const userId = data.user.id;
 
     try {
-        // Project counts by status
-        const projectStats = await env.DB.prepare(`
-      SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN status = 'punch_list' THEN 1 ELSE 0 END) as punch_list,
-        SUM(CASE WHEN status = 'bidding' THEN 1 ELSE 0 END) as bidding,
-        SUM(CASE WHEN status = 'complete' THEN 1 ELSE 0 END) as complete
-      FROM projects WHERE status != 'cancelled'
-    `).first();
+        // Project counts by status (scoped to user's projects unless admin)
+        const projectStats = isAdmin
+            ? await env.DB.prepare(`
+                SELECT
+                  COUNT(*) as total,
+                  SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+                  SUM(CASE WHEN status = 'punch_list' THEN 1 ELSE 0 END) as punch_list,
+                  SUM(CASE WHEN status = 'bidding' THEN 1 ELSE 0 END) as bidding,
+                  SUM(CASE WHEN status = 'complete' THEN 1 ELSE 0 END) as complete
+                FROM projects WHERE status != 'cancelled'
+              `).first()
+            : await env.DB.prepare(`
+                SELECT
+                  COUNT(*) as total,
+                  SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+                  SUM(CASE WHEN status = 'punch_list' THEN 1 ELSE 0 END) as punch_list,
+                  SUM(CASE WHEN status = 'bidding' THEN 1 ELSE 0 END) as bidding,
+                  SUM(CASE WHEN status = 'complete' THEN 1 ELSE 0 END) as complete
+                FROM projects WHERE status != 'cancelled' AND created_by = ?
+              `).bind(userId).first();
 
-        // Financial summary
-        const financials = await env.DB.prepare(`
-      SELECT
-        COALESCE(SUM(current_contract_value), 0) as total_contract,
-        COALESCE(SUM(total_billed), 0) as total_billed,
-        COALESCE(SUM(total_paid), 0) as total_paid,
-        COALESCE(SUM(retainage_held), 0) as total_retainage
-      FROM projects WHERE status IN ('active', 'punch_list')
-    `).first();
+        // Financial summary (scoped)
+        const financials = isAdmin
+            ? await env.DB.prepare(`
+                SELECT
+                  COALESCE(SUM(current_contract_value), 0) as total_contract,
+                  COALESCE(SUM(total_billed), 0) as total_billed,
+                  COALESCE(SUM(total_paid), 0) as total_paid,
+                  COALESCE(SUM(retainage_held), 0) as total_retainage
+                FROM projects WHERE status IN ('active', 'punch_list')
+              `).first()
+            : await env.DB.prepare(`
+                SELECT
+                  COALESCE(SUM(current_contract_value), 0) as total_contract,
+                  COALESCE(SUM(total_billed), 0) as total_billed,
+                  COALESCE(SUM(total_paid), 0) as total_paid,
+                  COALESCE(SUM(retainage_held), 0) as total_retainage
+                FROM projects WHERE status IN ('active', 'punch_list') AND created_by = ?
+              `).bind(userId).first();
 
-        // Open RFIs across all projects
-        const rfiStats = await env.DB.prepare(`
-      SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN status IN ('draft', 'submitted') THEN 1 ELSE 0 END) as open,
-        SUM(CASE WHEN due_date < date('now') AND status NOT IN ('closed', 'void') THEN 1 ELSE 0 END) as overdue
-      FROM rfis
-    `).first();
+        // Open RFIs across user's projects (scoped)
+        const rfiStats = isAdmin
+            ? await env.DB.prepare(`
+                SELECT
+                  COUNT(*) as total,
+                  SUM(CASE WHEN status IN ('draft', 'submitted') THEN 1 ELSE 0 END) as open,
+                  SUM(CASE WHEN due_date < date('now') AND status NOT IN ('closed', 'void') THEN 1 ELSE 0 END) as overdue
+                FROM rfis
+              `).first()
+            : await env.DB.prepare(`
+                SELECT
+                  COUNT(*) as total,
+                  SUM(CASE WHEN r.status IN ('draft', 'submitted') THEN 1 ELSE 0 END) as open,
+                  SUM(CASE WHEN r.due_date < date('now') AND r.status NOT IN ('closed', 'void') THEN 1 ELSE 0 END) as overdue
+                FROM rfis r
+                JOIN projects p ON r.project_id = p.id
+                WHERE p.created_by = ?
+              `).bind(userId).first();
 
-        // Pending COs across all projects
-        const coStats = await env.DB.prepare(`
-      SELECT
-        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-        COALESCE(SUM(CASE WHEN status = 'pending' THEN total_amount ELSE 0 END), 0) as pending_value
-      FROM change_orders
-    `).first();
+        // Pending COs across user's projects (scoped)
+        const coStats = isAdmin
+            ? await env.DB.prepare(`
+                SELECT
+                  SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+                  COALESCE(SUM(CASE WHEN status = 'pending' THEN total_amount ELSE 0 END), 0) as pending_value
+                FROM change_orders
+              `).first()
+            : await env.DB.prepare(`
+                SELECT
+                  SUM(CASE WHEN co.status = 'pending' THEN 1 ELSE 0 END) as pending,
+                  COALESCE(SUM(CASE WHEN co.status = 'pending' THEN co.total_amount ELSE 0 END), 0) as pending_value
+                FROM change_orders co
+                JOIN projects p ON co.project_id = p.id
+                WHERE p.created_by = ?
+              `).bind(userId).first();
 
-        // Recent activity
-        const activity = await env.DB.prepare(`
-      SELECT a.*, u.display_name as user_name, p.name as project_name
-      FROM activity_log a
-      LEFT JOIN users u ON a.user_id = u.id
-      LEFT JOIN projects p ON a.project_id = p.id
-      ORDER BY a.created_at DESC
-      LIMIT 20
-    `).all();
+        // Recent activity (scoped)
+        const activity = isAdmin
+            ? await env.DB.prepare(`
+                SELECT a.*, u.display_name as user_name, p.name as project_name
+                FROM activity_log a
+                LEFT JOIN users u ON a.user_id = u.id
+                LEFT JOIN projects p ON a.project_id = p.id
+                ORDER BY a.created_at DESC
+                LIMIT 20
+              `).all()
+            : await env.DB.prepare(`
+                SELECT a.*, u.display_name as user_name, p.name as project_name
+                FROM activity_log a
+                LEFT JOIN users u ON a.user_id = u.id
+                LEFT JOIN projects p ON a.project_id = p.id
+                WHERE p.created_by = ?
+                ORDER BY a.created_at DESC
+                LIMIT 20
+              `).bind(userId).all();
 
         return Response.json({
             projects: projectStats,

@@ -6,6 +6,11 @@
 export async function onRequestPut(context) {
     const { env, request, params, data } = context;
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const body = await request.json();
         const fields = [];
         const values = [];
@@ -32,6 +37,11 @@ export async function onRequestPut(context) {
 export async function onRequestDelete(context) {
     const { env, params, data } = context;
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         await env.DB.prepare(`DELETE FROM sov_items WHERE id = ? AND project_id = ?`).bind(params.itemId, params.id).run();
         await env.DB.prepare(
             `INSERT INTO activity_log (project_id, user_id, action, entity_type, entity_id, description)

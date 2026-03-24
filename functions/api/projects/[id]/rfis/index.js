@@ -4,12 +4,17 @@
 // ═══════════════════════════════════════════════════════════════
 
 export async function onRequestGet(context) {
-    const { env, params, request } = context;
+    const { env, params, request, data } = context;
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
     const discipline = url.searchParams.get('discipline');
 
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         let query = `SELECT * FROM rfis WHERE project_id = ?`;
         const binds = [params.id];
 
@@ -40,6 +45,11 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
     const { env, request, params, data } = context;
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const body = await request.json();
         if (!body.subject || !body.question) {
             return Response.json({ error: 'Subject and question are required' }, { status: 400 });

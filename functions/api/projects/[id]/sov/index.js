@@ -4,8 +4,13 @@
 // ═══════════════════════════════════════════════════════════════
 
 export async function onRequestGet(context) {
-    const { env, params } = context;
+    const { env, params, data } = context;
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const result = await env.DB.prepare(
             `SELECT * FROM sov_items WHERE project_id = ? ORDER BY sort_order ASC, item_number ASC`
         ).bind(params.id).all();
@@ -36,6 +41,11 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
     const { env, request, params, data } = context;
     try {
+        const project = await data.verifyProjectAccess(params.id);
+        if (!project) {
+            return Response.json({ error: 'Project not found' }, { status: 404 });
+        }
+
         const body = await request.json();
         if (!body.item_number || !body.description) {
             return Response.json({ error: 'Item number and description are required' }, { status: 400 });
