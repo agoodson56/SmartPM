@@ -44,9 +44,9 @@
 <div class="guide-header">
   <div class="container">
     <div>
-      <h1>🏗️ SmartPM — User Guide</h1>
-      <p>ELV Construction Project Manager · 3D Technology Services Inc.</p>
-      <p style="margin-top:8px;font-size:12px;opacity:0.7">Version 3.0 · Last Updated: March 2026 · <a href="https://smartpm.pages.dev/" style="color:#BF9000;text-decoration:underline;">Launch SmartPM</a></p>
+      <h1>SmartPM — User Guide</h1>
+      <p>ELV Construction Project Manager — 3D Technology Services Inc.</p>
+      <p style="margin-top:8px;font-size:12px;opacity:0.7">Version 2.0 — Last Updated: March 2026 — <a href="https://smartpm.pages.dev/" style="color:#BF9000;text-decoration:underline;">Launch SmartPM</a></p>
     </div>
   </div>
 </div>
@@ -54,20 +54,27 @@
 <nav class="guide-nav">
   <div class="container">
     <a href="#overview">Overview</a>
-    <a href="#login">Login</a>
+    <a href="#getting-started">Getting Started</a>
     <a href="#roles">Roles</a>
     <a href="#dashboard">Dashboard</a>
-    <a href="#import">Importing Projects</a>
-    <a href="#wbs">Work Breakdown</a>
+    <a href="#import">SmartPlans Import</a>
+    <a href="#project-mgmt">Project Management</a>
+    <a href="#sov">SOV</a>
+    <a href="#billing">Billing</a>
+    <a href="#wbs">WBS</a>
     <a href="#infrastructure">Infrastructure</a>
-    <a href="#tracking">Material & Labor</a>
-    <a href="#sov">SOV & Billing</a>
     <a href="#cos">Change Orders</a>
     <a href="#rfis">RFIs</a>
+    <a href="#submittals">Submittals</a>
     <a href="#daily-log">Daily Log</a>
     <a href="#daily-report">Daily Report</a>
     <a href="#punch">Punch List</a>
+    <a href="#contacts">Contacts</a>
+    <a href="#documents">Documents</a>
     <a href="#ai">AI Assistant</a>
+    <a href="#users">User Management</a>
+    <a href="#security">Security</a>
+    <a href="#health">Health Monitoring</a>
     <a href="#troubleshooting">Troubleshooting</a>
   </div>
 </nav>
@@ -75,239 +82,470 @@
 <div class="guide-body">
   <div class="container">
 
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 1. OVERVIEW -->
+    <!-- ══════════════════════════════════════════════════════════ -->
     <h2 id="overview">1. Overview</h2>
-    <p><strong>SmartPM</strong> is a full-featured ELV (Extra-Low Voltage) construction project management application. It handles everything from importing AI-generated estimates from SmartPlans to day-to-day tracking of materials installed, labor hours spent, billing, change orders, RFIs, and infrastructure.</p>
-    <h3>Key Features</h3>
+    <p><strong>SmartPM</strong> is a full-featured project management application purpose-built for ELV (Extra-Low Voltage) construction projects. It is developed by <strong>3D Technology Services Inc.</strong> and designed to manage every stage of a project lifecycle — from importing AI-generated estimates out of SmartPlans to day-to-day tracking of materials installed, labor hours spent, billing, change orders, RFIs, infrastructure, and closeout.</p>
+    <p>SmartPM integrates directly with <strong>SmartPlans</strong> to provide a seamless estimate-to-execution workflow. Estimates created in SmartPlans can be exported as JSON and imported into SmartPM, automatically populating the project with SOV line items, WBS phases, infrastructure locations, equipment, cable runs, and RFIs.</p>
+
+    <h3>Key Capabilities</h3>
     <table>
       <tr><th>Feature</th><th>Description</th></tr>
-      <tr><td>📦 SmartPlans Import</td><td>One-click import of AI-generated estimates with locked budgets</td></tr>
-      <tr><td>📐 Work Breakdown (WBS)</td><td>Hierarchical phase → location → task tracking from the bid</td></tr>
-      <tr><td>🏢 Infrastructure</td><td>MDF/IDF/TR room management with equipment, cable runs, and labor</td></tr>
-      <tr><td>🚦 Budget Health</td><td>Traffic light system (🟢🟡🔴) for instant budget visibility</td></tr>
-      <tr><td>📋 Schedule of Values</td><td>AIA G703 line items for progress billing</td></tr>
-      <tr><td>💰 Progress Billing</td><td>Track payment applications per billing period</td></tr>
-      <tr><td>📝 Change Orders</td><td>Document scope changes with cost and schedule impact</td></tr>
-      <tr><td>❓ RFIs</td><td>Track Requests for Information through resolution</td></tr>
-      <tr><td>📅 Daily Log</td><td>Field reports with weather, crew, and activity tracking</td></tr>
-      <tr><td>📧 Daily Report</td><td>Generate emailable daily status reports for stakeholders</td></tr>
-      <tr><td>✅ Punch List</td><td>Deficiency tracking through closeout</td></tr>
-      <tr><td>🤖 AI Assistant</td><td>6 Gemini AI-powered analysis tools</td></tr>
-      <tr><td>🔐 Role-Based Access</td><td>4 permission levels control data access</td></tr>
-      <tr><td>📖 User Guide</td><td>Built-in documentation accessible from the header</td></tr>
+      <tr><td>SmartPlans Import</td><td>One-click import of AI-generated estimates with locked budgets</td></tr>
+      <tr><td>Work Breakdown (WBS)</td><td>Hierarchical phase / location / task tracking from the bid</td></tr>
+      <tr><td>Infrastructure</td><td>MDF/IDF/TR room management with equipment, cable runs, and labor</td></tr>
+      <tr><td>Schedule of Values</td><td>AIA G703 line items with material/labor cost breakdown</td></tr>
+      <tr><td>Progress Billing</td><td>Payment application tracking per billing period</td></tr>
+      <tr><td>Change Orders</td><td>Scope change tracking with cost and schedule impact</td></tr>
+      <tr><td>RFIs</td><td>Request for Information tracking from submission to resolution</td></tr>
+      <tr><td>Submittals</td><td>Submittal log and approval tracking</td></tr>
+      <tr><td>Daily Log</td><td>Field activity reports with weather, crew, delays, and materials</td></tr>
+      <tr><td>Daily Report</td><td>Generate formatted status reports for stakeholders</td></tr>
+      <tr><td>Punch List</td><td>Deficiency tracking through closeout and verification</td></tr>
+      <tr><td>Contacts</td><td>Project stakeholder directory</td></tr>
+      <tr><td>Document Manager</td><td>Upload, download, and organize project documents with category tags</td></tr>
+      <tr><td>AI Assistant</td><td>6 Gemini AI-powered analysis and reporting tools</td></tr>
+      <tr><td>Role-Based Access</td><td>4 permission levels (Admin, Ops Manager, PM, Viewer)</td></tr>
     </table>
-    <div class="callout callout-info">ℹ️ All data is stored securely in the cloud (Cloudflare D1 database). Projects persist across sessions and can be accessed from any device.</div>
+    <div class="callout callout-info">All data is stored securely in the cloud (Cloudflare D1 database). Projects persist across sessions and can be accessed from any device with a browser.</div>
 
-    <h2 id="login">2. Logging In</h2>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 2. GETTING STARTED -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="getting-started">2. Getting Started</h2>
     <h4>Access URL</h4>
     <p><code>https://smartpm.pages.dev/</code></p>
     <h4>Login Process</h4>
     <ol class="step-list">
-      <li>Navigate to SmartPM in your browser</li>
+      <li>Navigate to <code>https://smartpm.pages.dev/</code> in your browser</li>
       <li>Enter your <strong>Username</strong> and <strong>Password</strong></li>
       <li>Click <strong>Sign In</strong></li>
-      <li>You'll be taken to the <strong>Dashboard</strong></li>
+      <li>You will be taken to the <strong>Dashboard</strong>, which is your home screen</li>
     </ol>
-    <div class="callout callout-warn">⚠️ Contact your Admin if you don't have login credentials or need a password reset.</div>
+    <div class="callout callout-warn">Contact your Admin if you do not have login credentials or need a password reset. Admins create all user accounts.</div>
 
-    <h2 id="roles">3. User Roles & Permissions</h2>
-    <p>SmartPM has four roles. Your role determines what you can see and do.</p>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 3. ROLES & PERMISSIONS -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="roles">3. User Roles &amp; Permissions</h2>
+    <p>SmartPM uses role-based access control with four levels. Your role determines what you can see and do throughout the application.</p>
     <table>
       <tr><th>Permission</th><th>Admin</th><th>Ops Mgr</th><th>PM</th><th>Viewer</th></tr>
-      <tr><td>View all project data</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-      <tr><td>Use AI Assistant</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-      <tr><td>Create/import projects</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
-      <tr><td>Edit project settings</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
-      <tr><td>Edit material/labor actuals</td><td>✅</td><td>✅</td><td>✅</td><td>❌</td></tr>
-      <tr><td>Edit infrastructure budgets</td><td>✅</td><td>✅</td><td>❌</td><td>❌</td></tr>
-      <tr><td>Delete any project</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
-      <tr><td>Manage user passwords</td><td>✅</td><td>✅*</td><td>❌</td><td>❌</td></tr>
+      <tr><td>View all project data</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Use AI Assistant</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Create / import projects</td><td>Yes</td><td>Yes</td><td>No</td><td>No</td></tr>
+      <tr><td>Edit project settings</td><td>Yes</td><td>Yes</td><td>No</td><td>No</td></tr>
+      <tr><td>Edit material/labor actuals</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td></tr>
+      <tr><td>Edit infrastructure budgets</td><td>Yes</td><td>Yes</td><td>No</td><td>No</td></tr>
+      <tr><td>Delete any project</td><td>Yes</td><td>No</td><td>No</td><td>No</td></tr>
+      <tr><td>Manage user passwords</td><td>Yes</td><td>Yes*</td><td>No</td><td>No</td></tr>
     </table>
-    <p><em>*Ops Managers can only change PM passwords.</em></p>
+    <p><em>*Ops Managers can only change PM passwords. Admins can change all passwords.</em></p>
 
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 4. DASHBOARD -->
+    <!-- ══════════════════════════════════════════════════════════ -->
     <h2 id="dashboard">4. Dashboard</h2>
-    <p>The Dashboard is your home screen. It shows all projects with summary metrics.</p>
-    <h4>Dashboard Metrics</h4>
-    <ul>
-      <li><strong>Active Projects</strong> — Currently in progress</li>
-      <li><strong>Total Contract Value</strong> — Sum of all project contracts</li>
-      <li><strong>Total Billed</strong> — Sum of all billing to date</li>
-      <li><strong>Open RFIs</strong> — Unresolved questions</li>
-      <li><strong>Pending COs</strong> — Change orders awaiting approval</li>
-      <li><strong>Outstanding</strong> — Amount billed but not yet paid</li>
-    </ul>
-    <h4>Project Cards</h4>
-    <p>Each project appears as a card showing name, status, contract value, billed amount, and disciplines. Click a card to open the project.</p>
-    <h4>Deleting Projects</h4>
-    <p>Admin users see a red <strong>"🗑 Delete Project"</strong> button on every project card. Clicking it shows a confirmation dialog, then <strong>permanently removes</strong> the project and all associated data (WBS, infrastructure, SOV, billing, change orders, RFIs, daily logs, punch items, contacts, and documents).</p>
-    <div class="callout callout-warn">⚠️ <strong>Deletion is permanent.</strong> There is no undo. Make sure you have exported any data you need before deleting a project.</div>
+    <p>The Dashboard is your home screen and portfolio overview. It provides a high-level summary of all projects and quick access to key actions.</p>
 
-    <h2 id="import">5. Importing from SmartPlans</h2>
-    <p>This is the primary workflow for creating projects.</p>
+    <h4>Portfolio Metrics</h4>
+    <p>Six metric cards are displayed at the top of the Dashboard:</p>
+    <table>
+      <tr><th>Metric</th><th>Description</th></tr>
+      <tr><td>Active Projects</td><td>Number of projects with status "Active" or "Punch List"</td></tr>
+      <tr><td>Total Contract Value</td><td>Sum of current contract values across all projects</td></tr>
+      <tr><td>Total Billed</td><td>Sum of all billing to date across projects</td></tr>
+      <tr><td>Open RFIs</td><td>Count of unresolved Requests for Information (from the dashboard API)</td></tr>
+      <tr><td>Pending COs</td><td>Count of change orders awaiting approval</td></tr>
+      <tr><td>Outstanding</td><td>Amount billed but not yet paid (Total Billed minus Total Paid)</td></tr>
+    </table>
+
+    <h4>Project Cards</h4>
+    <p>Below the metrics, each project appears as a card showing the project name, number, status badge, client/GC, disciplines, contract value, and billed amount. Click any card to open that project.</p>
+
+    <h4>Quick Actions</h4>
+    <ul>
+      <li><strong>"Import from SmartPlans"</strong> — Opens the SmartPlans import dialog (Admin / Ops Mgr only)</li>
+      <li><strong>"+ New Project"</strong> — Create a project manually (Admin / Ops Mgr only)</li>
+    </ul>
+
+    <h4>Deleting Projects</h4>
+    <p>Admin users see a red <strong>"Delete Project"</strong> button on every project card. Clicking it shows a confirmation dialog, then <strong>permanently removes</strong> the project and all associated data (WBS, infrastructure, SOV, billing, change orders, RFIs, submittals, daily logs, punch items, contacts, and documents).</p>
+    <div class="callout callout-warn">Deletion is permanent. There is no undo. Export any data you need before deleting a project.</div>
+
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 5. SMARTPLANS IMPORT -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="import">5. SmartPlans Import</h2>
+    <p>Importing from SmartPlans is the primary workflow for creating fully-populated projects. SmartPlans is the companion estimating tool that generates AI-powered ELV construction estimates.</p>
+
+    <h4>How to Import</h4>
     <ol class="step-list">
-      <li>On the Dashboard, click <strong>"📦 Import from SmartPlans"</strong></li>
-      <li>Click <strong>"📁 Choose JSON File"</strong> and select the SmartPlans export</li>
-      <li>Review the import preview (project name, disciplines, RFIs)</li>
-      <li>Click <strong>"✓ Import Project"</strong></li>
-      <li>SmartPM creates the project with all data pre-populated</li>
+      <li>On the Dashboard, click <strong>"Import from SmartPlans"</strong></li>
+      <li>Click <strong>"Choose JSON File"</strong> and select the SmartPlans export file</li>
+      <li>Review the import preview — it shows the project name, contract value, SOV categories, infrastructure locations, WBS phases, and RFIs that will be created</li>
+      <li>Click <strong>"Import Project"</strong></li>
+      <li>SmartPM creates the project with all data pre-populated from the estimate</li>
     </ol>
+
     <h4>What Gets Imported</h4>
     <table>
       <tr><th>SmartPlans Data</th><th>SmartPM Destination</th></tr>
       <tr><td>Project name, type, location</td><td>Project metadata</td></tr>
-      <tr><td>Pricing configuration</td><td>Project settings</td></tr>
-      <tr><td>Selected RFIs</td><td>RFIs module</td></tr>
-      <tr><td>SOV line items</td><td>Schedule of Values</td></tr>
-      <tr><td>MDF/IDF rooms</td><td>Infrastructure locations</td></tr>
-      <tr><td>Equipment per room</td><td>Location items (🔒 locked budgets)</td></tr>
-      <tr><td>Cable runs</td><td>Cable run records</td></tr>
-      <tr><td>WBS phases & tasks</td><td>Work Breakdown Structure</td></tr>
+      <tr><td>Pricing / contract value</td><td>Project settings and financial summary</td></tr>
+      <tr><td>SOV line items (BOM categories)</td><td>Schedule of Values with material/labor cost breakdown</td></tr>
+      <tr><td>MDF/IDF/TR rooms</td><td>Infrastructure locations</td></tr>
+      <tr><td>Equipment per room</td><td>Location equipment items (locked budgets)</td></tr>
+      <tr><td>Cable runs</td><td>Cable run records with budgeted footage</td></tr>
+      <tr><td>WBS phases and tasks</td><td>Work Breakdown Structure hierarchy</td></tr>
+      <tr><td>Selected RFIs</td><td>RFIs module (auto-populated)</td></tr>
     </table>
-    <div class="callout callout-tip">💡 Budgeted amounts imported from SmartPlans are <strong>locked (🔒)</strong>. Only Admins/Ops Mgrs can modify budgets. PMs can only update actual quantities and hours.</div>
+    <div class="callout callout-tip">Budgeted amounts imported from SmartPlans are <strong>locked</strong>. Only Admins and Ops Managers can modify budgets. PMs can only update actual quantities and hours.</div>
 
-    <h2 id="wbs">6. Work Breakdown Structure (WBS)</h2>
-    <p>The WBS shows your entire project broken down into <strong>Phases → Locations → Tasks</strong>.</p>
-    <h4>WBS Dashboard</h4>
+    <h4>Re-importing (Updating an Existing Project)</h4>
+    <p>If the SmartPlans estimate is updated after the initial import, you can re-import to refresh the project data:</p>
+    <ol class="step-list">
+      <li>Open the project and go to the <strong>Overview</strong> tab</li>
+      <li>Click <strong>"Re-import from SmartPlans"</strong> (only visible for projects that were originally imported)</li>
+      <li>Select the updated JSON export file</li>
+      <li>The re-import updates budgeted data while preserving any field-level changes (actuals, progress, notes) that were entered in SmartPM</li>
+    </ol>
+    <div class="callout callout-info">The re-import button only appears on projects that have a <code>smartplans_import_id</code> — meaning they were originally created via SmartPlans import.</div>
+
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 6. PROJECT MANAGEMENT -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="project-mgmt">6. Project Management</h2>
+    <p>When you open a project, you see a sidebar with tab-based navigation for all modules and an overview page with key metrics.</p>
+
+    <h4>Project Overview</h4>
+    <p>The overview page displays:</p>
     <ul>
-      <li><strong>Project Health</strong> — Overall traffic light (🟢🟡🔴)</li>
-      <li><strong>Total Tasks</strong> — Number of WBS items</li>
-      <li><strong>Overall Progress</strong> — Weighted % complete</li>
-      <li><strong>Material Budget</strong> — Actual vs. budgeted material costs</li>
-      <li><strong>Labor Budget</strong> — Actual vs. budgeted labor hours</li>
-      <li><strong>Tasks Complete</strong> — Completed task count</li>
+      <li><strong>Financial metrics</strong> — Original contract, current contract (adjusted for change orders), total billed, and remaining balance with a progress bar</li>
+      <li><strong>Project Details card</strong> — Client name, GC, location, jurisdiction, retainage percentage, and discipline tags</li>
+      <li><strong>Key Dates card</strong> — Bid date, award date, start date, substantial completion, and final completion</li>
+      <li><strong>AI Intelligence Hub</strong> — Quick-access buttons for all 6 AI-powered features</li>
     </ul>
+
+    <h4>Sidebar Modules</h4>
+    <p>The project sidebar provides access to all 14 modules:</p>
+    <table>
+      <tr><th>#</th><th>Module</th><th>Description</th></tr>
+      <tr><td>1</td><td>Overview</td><td>Project summary with financial metrics and AI hub</td></tr>
+      <tr><td>2</td><td>Work Breakdown (WBS)</td><td>Phase / location / task hierarchy from the bid</td></tr>
+      <tr><td>3</td><td>Infrastructure</td><td>MDF/IDF/TR room management</td></tr>
+      <tr><td>4</td><td>Schedule of Values</td><td>AIA G703 line items</td></tr>
+      <tr><td>5</td><td>Progress Billing</td><td>Payment application tracking</td></tr>
+      <tr><td>6</td><td>Change Orders</td><td>Scope change tracking</td></tr>
+      <tr><td>7</td><td>RFIs</td><td>Request for Information tracking</td></tr>
+      <tr><td>8</td><td>Submittals</td><td>Submittal log and approval tracking</td></tr>
+      <tr><td>9</td><td>Daily Log</td><td>Field activity recording</td></tr>
+      <tr><td>10</td><td>Punch List</td><td>Deficiency tracking</td></tr>
+      <tr><td>11</td><td>Contacts</td><td>Project stakeholder directory</td></tr>
+      <tr><td>12</td><td>Documents</td><td>Document upload and management</td></tr>
+      <tr><td>13</td><td>Daily Report</td><td>Formatted status reports for stakeholders</td></tr>
+      <tr><td>14</td><td>AI Assistant</td><td>6 Gemini-powered analysis tools</td></tr>
+    </table>
+    <p>Admin and Ops Manager users also see a <strong>Settings</strong> module for editing project details and configuration.</p>
+
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 7. SCHEDULE OF VALUES (SOV) -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="sov">7. Schedule of Values (SOV)</h2>
+    <p>The SOV module manages AIA G703-format line items for the project. Each line item has a scheduled value with material and labor cost breakdown from the SmartPlans BOM, along with a completion percentage.</p>
+    <ul>
+      <li>Line items are auto-created when importing from SmartPlans</li>
+      <li>Admin/Ops Mgr users can add, edit, or delete SOV line items manually</li>
+      <li>Each item tracks: item number, description, scheduled value, material cost, labor cost, and percent complete</li>
+    </ul>
+    <div class="callout callout-tip">Use the AI SOV Validation feature to cross-reference reported completion percentages against daily log evidence.</div>
+
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 8. PROGRESS BILLING -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="billing">8. Progress Billing</h2>
+    <p>The Progress Billing module tracks payment applications per billing period (typically monthly).</p>
+    <ul>
+      <li>Create billing periods and record work completed and materials stored for each SOV line item</li>
+      <li>The system calculates retainage, previous payments, and current payment due</li>
+      <li>Each billing period links to the SOV for consistent tracking</li>
+    </ul>
+
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 9. WORK BREAKDOWN STRUCTURE (WBS) -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="wbs">9. Work Breakdown Structure (WBS)</h2>
+    <p>The WBS module displays the entire project broken down into a <strong>Phase / Location / Task</strong> hierarchy, auto-generated from the SmartPlans bid.</p>
+
+    <h4>WBS Dashboard Metrics</h4>
+    <ul>
+      <li><strong>Project Health</strong> — Traffic light indicator (green = on track, yellow = caution, red = over budget)</li>
+      <li><strong>Total WBS Tasks</strong> — Count of all tasks in the hierarchy</li>
+      <li><strong>Overall Progress</strong> — Weighted percentage complete</li>
+      <li><strong>Material Budget</strong> — Actual vs. budgeted material cost with traffic light</li>
+      <li><strong>Labor Budget</strong> — Actual vs. budgeted labor hours with traffic light</li>
+      <li><strong>Tasks Complete</strong> — Count of completed tasks vs. total</li>
+    </ul>
+
+    <h4>Phase Filtering</h4>
+    <p>Filter buttons let you view tasks by construction phase: All Phases, Rough-In, Trim-Out, Termination &amp; Test, or Closeout.</p>
+
     <h4>Editing a WBS Task</h4>
-    <p>Click the <strong>✏️</strong> button on any task to open the update modal:</p>
+    <p>Click the edit button on any task to open the update modal:</p>
     <table>
       <tr><th>Section</th><th>What You See</th></tr>
-      <tr><td>📊 Estimated from Bid (Read-Only)</td><td>Material cost, labor hours, and total budget from the original SmartPlans estimate — displayed in a gold-bordered card</td></tr>
-      <tr><td>✏️ Qty Installed (ft or ea)</td><td>Enter the physical quantity installed — e.g., "500 ft" of cable or "24 ea" patch panels</td></tr>
-      <tr><td>📏 Unit</td><td>Select the unit type: Feet, Each, Lot, or Box</td></tr>
-      <tr><td>⏱️ Actual Labor Hours</td><td>Enter how many hours the crew spent on this task</td></tr>
-      <tr><td>📊 Progress %</td><td>Slider from 0–100% indicating task completion</td></tr>
-      <tr><td>📋 Status</td><td>Not Started, In Progress, On Hold, or Complete</td></tr>
-      <tr><td>📅 Dates / Assigned / Notes</td><td>Actual start/end dates, who's responsible, and free-text notes</td></tr>
+      <tr><td>Estimated from Bid (Read-Only)</td><td>Material cost, labor hours, and total budget from the original SmartPlans estimate — displayed in a gold-bordered card</td></tr>
+      <tr><td>Qty Installed</td><td>Enter the physical quantity installed (e.g., 500 ft of cable, 24 ea patch panels)</td></tr>
+      <tr><td>Unit</td><td>Select: Feet, Each, Lot, or Box</td></tr>
+      <tr><td>Actual Labor Hours</td><td>Enter how many hours the crew spent on this task</td></tr>
+      <tr><td>Progress %</td><td>Slider from 0-100% indicating task completion</td></tr>
+      <tr><td>Status</td><td>Not Started, In Progress, On Hold, or Complete</td></tr>
+      <tr><td>Dates / Assigned / Notes</td><td>Actual start/end dates, assigned person, and free-text notes</td></tr>
     </table>
+
     <h4>WBS Table Columns</h4>
-    <p>The WBS table now shows two new columns for actuals tracking:</p>
     <table>
       <tr><th>Column</th><th>Description</th></tr>
-      <tr><td>Material 🔒</td><td>Budgeted material cost (read-only from SmartPlans)</td></tr>
-      <tr><td>Labor 🔒</td><td>Budgeted labor hours (read-only from SmartPlans)</td></tr>
-      <tr><td><strong>Installed</strong></td><td>Actual quantity installed with unit (e.g., "500 ft" or "24 ea")</td></tr>
-      <tr><td><strong>Hrs Used</strong></td><td>Actual labor hours spent vs. budgeted (with traffic light health)</td></tr>
+      <tr><td>Material (locked)</td><td>Budgeted material cost from SmartPlans (read-only)</td></tr>
+      <tr><td>Labor (locked)</td><td>Budgeted labor hours from SmartPlans (read-only)</td></tr>
+      <tr><td>Installed</td><td>Actual quantity installed with unit (e.g., "500 ft")</td></tr>
+      <tr><td>Hrs Used</td><td>Actual labor hours vs. budgeted with traffic light health</td></tr>
       <tr><td>Progress</td><td>Visual progress bar with percentage</td></tr>
-      <tr><td>Status</td><td>Current task status badge</td></tr>
+      <tr><td>Status</td><td>Current status badge</td></tr>
     </table>
-    <div class="callout callout-tip">💡 <strong>PMs only enter what they know:</strong> how many feet or pieces were installed and how many hours it took. You do NOT need to enter dollar amounts — the system auto-calculates costs from the budgeted unit cost × installed quantity.</div>
+    <div class="callout callout-tip">PMs only enter what they know: how many feet or pieces were installed and how many hours it took. You do NOT need to enter dollar amounts — the system auto-calculates costs from the budgeted unit cost multiplied by installed quantity.</div>
 
-    <h2 id="infrastructure">7. Infrastructure Module</h2>
-    <p>Manage telecom rooms (MDF, IDF, TR) and their contents.</p>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 10. INFRASTRUCTURE -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="infrastructure">10. Infrastructure Module</h2>
+    <p>The Infrastructure module manages telecom rooms (MDF, IDF, TR) and their contents. Locations are auto-populated from SmartPlans import, or can be created manually.</p>
+
     <h4>Location Detail Tabs</h4>
     <table>
       <tr><th>Tab</th><th>What It Tracks</th></tr>
-      <tr><td>📦 Equipment</td><td>Patch panels, switches, UPS, racks — budgeted qty vs. installed qty</td></tr>
-      <tr><td>🔌 Cable Runs</td><td>Cat6, fiber, coax — budgeted feet vs. installed feet, labor hours</td></tr>
-      <tr><td>⏱️ Labor</td><td>Task-level labor entries — budgeted hours vs. actual hours</td></tr>
+      <tr><td>Equipment</td><td>Patch panels, switches, UPS, racks — budgeted quantity vs. installed quantity</td></tr>
+      <tr><td>Cable Runs</td><td>Cat6, fiber, coax — budgeted feet vs. installed feet, labor hours</td></tr>
+      <tr><td>Labor</td><td>Task-level labor entries — budgeted hours vs. actual hours</td></tr>
     </table>
+    <p>Each location shows a budget summary with traffic light health indicators. Admin/Ops Mgr users can add, edit, and delete locations and their items. PMs can update installed quantities and actual labor hours.</p>
 
-    <h2 id="tracking">8. Material & Labor Tracking</h2>
-    <p>This is the core daily workflow for Project Managers.</p>
-    <h4>What PMs Track Each Day</h4>
-    <table>
-      <tr><th>What to Enter</th><th>Where</th><th>Example</th></tr>
-      <tr><td>Material installed (qty)</td><td>WBS task or Equipment tab</td><td>"Installed 24 ea patch panels"</td></tr>
-      <tr><td>Cable pulled (feet)</td><td>Cable Runs tab</td><td>"Pulled 2,500 ft of Cat6A"</td></tr>
-      <tr><td>Labor hours spent</td><td>WBS task or Labor tab</td><td>"8.5 hours on terminations"</td></tr>
-      <tr><td>Task progress %</td><td>WBS task edit</td><td>"Rough-in: 65% complete"</td></tr>
-      <tr><td>Task status</td><td>WBS task edit</td><td>"In Progress" / "Complete"</td></tr>
-    </table>
-    <div class="callout callout-warn">⚠️ <strong>Update daily!</strong> The more current your actuals, the more accurate your traffic light indicators and daily reports will be.</div>
 
-    <h2 id="sov">9. Schedule of Values & Billing</h2>
-    <h4>SOV</h4>
-    <p>AIA G703-format line items. Each line item has a scheduled value, material/labor breakdown, and completion percentage. Items are auto-created from SmartPlans import.</p>
-    <h4>Progress Billing</h4>
-    <p>Create billing periods (monthly) and record work completed and materials stored for each SOV line item. The system calculates retainage, previous payments, and current payment due.</p>
-
-    <h2 id="cos">10. Change Orders</h2>
-    <p>Track scope changes with financial and schedule impact.</p>
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 11. CHANGE ORDERS -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="cos">11. Change Orders</h2>
+    <p>Track scope changes with financial and schedule impact throughout the project.</p>
     <ul>
       <li><strong>Types:</strong> Addition, Deduction, No-Cost Change</li>
-      <li><strong>Status:</strong> Pending → Approved / Rejected</li>
-      <li><strong>AI Feature:</strong> Click "🤖 AI Impact Analysis" for cumulative impact assessment</li>
+      <li><strong>Status flow:</strong> Pending &rarr; Approved / Rejected</li>
+      <li>Each change order records: description, cost amount, schedule impact (days), and justification</li>
+      <li>Approved change orders adjust the current contract value on the project overview</li>
+      <li><strong>AI Feature:</strong> Click "AI Impact Analysis" for a cumulative financial and schedule impact assessment across all change orders</li>
     </ul>
 
-    <h2 id="rfis">11. RFIs</h2>
-    <p>Track Requests for Information from submission to response.</p>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 12. RFIs -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="rfis">12. RFIs (Requests for Information)</h2>
+    <p>Track Requests for Information from submission through resolution.</p>
     <ul>
-      <li>Pre-populated RFIs from SmartPlans import</li>
-      <li>Track status: Open → Answered → Closed</li>
-      <li><strong>AI Feature:</strong> "🤖 AI Smart RFIs" drafts professional questions automatically</li>
+      <li>RFIs are auto-populated from SmartPlans import when the estimate includes flagged questions</li>
+      <li>Create new RFIs manually at any time during the project</li>
+      <li><strong>Status flow:</strong> Open &rarr; Answered &rarr; Closed</li>
+      <li>Each RFI tracks: subject, question, response, assigned to, date submitted, and date answered</li>
+      <li><strong>AI Feature:</strong> "AI Smart RFIs" scans your project data (SOV, infrastructure, daily logs) and drafts professional RFI questions for items that need clarification</li>
     </ul>
 
-    <h2 id="daily-log">12. Daily Log</h2>
-    <p>Record daily field reports including:</p>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 13. SUBMITTALS -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="submittals">13. Submittals</h2>
+    <p>The Submittal module provides a log for tracking submittals sent to the architect or engineer for approval.</p>
+    <ul>
+      <li>Create submittal entries with number, description, spec section, and status</li>
+      <li>Track submittal lifecycle: Pending &rarr; Submitted &rarr; Approved / Rejected / Revise &amp; Resubmit</li>
+      <li>Record dates for submission, review, and response</li>
+    </ul>
+
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 14. DAILY LOG -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="daily-log">14. Daily Log</h2>
+    <p>Record daily field reports for each working day on the project.</p>
     <ul>
       <li>Weather conditions and temperature</li>
       <li>Crew size and hours worked</li>
-      <li>Work performed (with specific detail)</li>
-      <li>Delays, safety incidents, visitor log</li>
+      <li>Work performed (with specific detail — room numbers, equipment, cable counts)</li>
+      <li>Delays, safety incidents, and visitor log</li>
       <li>Materials received and installed</li>
     </ul>
-    <div class="callout callout-tip">💡 <strong>Pro Tip:</strong> Be specific in daily logs — mention room numbers, equipment models, and cable counts. The AI uses your logs for productivity analysis and progress reports.</div>
+    <div class="callout callout-tip"><strong>Pro Tip:</strong> Be specific in daily logs — mention room numbers, equipment models, and cable counts. The AI Assistant uses your daily log entries to generate progress reports and productivity analysis.</div>
 
-    <h2 id="daily-report">13. Daily Status Report</h2>
-    <p>The <strong>📧 Daily Report</strong> module generates formatted status reports for emailing to stakeholders.</p>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 15. DAILY STATUS REPORT -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="daily-report">15. Daily Status Report</h2>
+    <p>The Daily Report module generates formatted status reports suitable for emailing to stakeholders (owners, GCs, project teams).</p>
     <h4>How to Generate a Report</h4>
     <ol class="step-list">
-      <li>Open a project and click <strong>"📧 Daily Report"</strong> in the sidebar</li>
+      <li>Open a project and click <strong>"Daily Report"</strong> in the sidebar</li>
       <li>Select the <strong>report date</strong> and enter the <strong>recipient email address</strong></li>
-      <li>Click <strong>"📊 Generate Report"</strong></li>
-      <li>The report appears below with full project status</li>
-      <li>Click <strong>"📋 Copy to Clipboard"</strong> to paste into any email, or</li>
-      <li>Click <strong>"📧 Email Report"</strong> to open your email client with the report pre-filled</li>
+      <li>Click <strong>"Generate Report"</strong></li>
+      <li>The formatted report appears below with full project status</li>
+      <li>Click <strong>"Copy to Clipboard"</strong> to paste into any email client, or</li>
+      <li>Click <strong>"Email Report"</strong> to open your default email client with the report pre-filled</li>
     </ol>
     <h4>Report Contents</h4>
     <table>
       <tr><th>Section</th><th>What It Shows</th></tr>
-      <tr><td>📊 Project Summary</td><td>Contract value, overall progress %, health status, tasks complete</td></tr>
-      <tr><td>💰 Budget Status</td><td>Material and labor: budgeted vs. actual with % used and traffic lights</td></tr>
-      <tr><td>📐 Phase Progress</td><td>Each WBS phase with progress %, material spend, and labor hours</td></tr>
-      <tr><td>🏢 Infrastructure</td><td>Location statuses with equipment and cable run counts</td></tr>
+      <tr><td>Project Summary</td><td>Contract value, overall progress %, health status, tasks complete</td></tr>
+      <tr><td>Budget Status</td><td>Material and labor: budgeted vs. actual with % used and traffic lights</td></tr>
+      <tr><td>Phase Progress</td><td>Each WBS phase with progress %, material spend, and labor hours</td></tr>
+      <tr><td>Infrastructure</td><td>Location statuses with equipment and cable run counts</td></tr>
     </table>
 
-    <h2 id="punch">14. Punch List</h2>
-    <p>Track deficiency items from walkthrough to closeout.</p>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 16. PUNCH LIST -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="punch">16. Punch List</h2>
+    <p>Track deficiency items identified during walkthroughs, from discovery through closeout verification.</p>
     <ul>
-      <li>Assign items by location, discipline, and priority</li>
-      <li>Track status: Open → In Progress → Completed → Verified</li>
-      <li><strong>AI Feature:</strong> "🤖 AI Priority Plan" ranks items by criticality</li>
+      <li>Assign items by location, discipline, and priority level</li>
+      <li><strong>Status flow:</strong> Open &rarr; In Progress &rarr; Completed &rarr; Verified</li>
+      <li>Record responsible party, due date, and resolution notes</li>
+      <li><strong>AI Feature:</strong> "AI Priority Plan" ranks open punch items by criticality (safety &rarr; code &rarr; functional &rarr; cosmetic) and generates a day-by-day action plan for efficient closeout</li>
     </ul>
 
-    <h2 id="ai">15. AI Assistant</h2>
-    <p>SmartPM includes 6 AI-powered features driven by <strong>Google Gemini 3.1 Pro</strong>:</p>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 17. CONTACTS -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="contacts">17. Contacts</h2>
+    <p>The Contacts module provides a directory of project stakeholders — owners, GC representatives, architects, engineers, subcontractors, and inspectors.</p>
+    <ul>
+      <li>Add contacts with name, company, role, phone, and email</li>
+      <li>Contacts can be scoped to a specific project or shared across all projects</li>
+      <li>Edit or delete contacts as the project team changes</li>
+    </ul>
+
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 18. DOCUMENT MANAGER -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="documents">18. Document Manager</h2>
+    <p>Upload, organize, and download project documents such as specifications, shop drawings, photos, and submittal packages.</p>
+    <ul>
+      <li><strong>Upload documents</strong> with category tags for organization</li>
+      <li><strong>Drag-and-drop support</strong> for quick file uploads</li>
+      <li><strong>Category filtering</strong> to find documents quickly</li>
+      <li><strong>File type icons</strong> displayed based on the document format</li>
+      <li><strong>Download</strong> any document to your local machine</li>
+      <li><strong>Delete</strong> documents that are no longer needed</li>
+    </ul>
+    <div class="callout callout-info">Documents are stored in the cloud database. The API supports both uploading (<code>POST /api/projects/:id/documents</code>) and downloading (<code>GET /api/projects/:id/documents/:docId</code>) with optional metadata-only retrieval.</div>
+
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 19. AI ASSISTANT -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="ai">19. AI Assistant</h2>
+    <p>SmartPM includes 6 AI-powered features driven by <strong>Google Gemini 3.1 Pro</strong>. These tools analyze your project data and generate actionable reports. The AI is read-only — it never modifies your project records.</p>
     <table>
       <tr><th>Feature</th><th>What It Does</th><th>Where</th></tr>
-      <tr><td>📊 AI Progress Report</td><td>Analyzes daily logs into executive summary</td><td>Daily Log page</td></tr>
-      <tr><td>❓ AI Smart RFIs</td><td>Drafts professional RFI questions</td><td>RFIs page</td></tr>
-      <tr><td>📝 AI Impact Analysis</td><td>Assesses change order financial/schedule impact</td><td>Change Orders page</td></tr>
-      <tr><td>✅ AI Priority Plan</td><td>Ranks punch list by criticality</td><td>Punch List page</td></tr>
-      <tr><td>💰 AI Budget Forecast</td><td>Predicts budget health trajectory</td><td>AI Assistant page</td></tr>
-      <tr><td>📋 AI SOV Validation</td><td>Cross-references % complete vs. log evidence</td><td>SOV page</td></tr>
+      <tr><td>AI Progress Report</td><td>Analyzes daily log entries into an executive summary with crew productivity, delay tracking, and recommendations</td><td>Daily Log page / AI Assistant page</td></tr>
+      <tr><td>AI Smart RFIs</td><td>Scans project data to identify ambiguities and drafts professional RFI questions</td><td>RFIs page / AI Assistant page</td></tr>
+      <tr><td>AI Impact Analysis</td><td>Evaluates all change orders for cumulative financial impact, schedule implications, and risk exposure</td><td>Change Orders page / AI Assistant page</td></tr>
+      <tr><td>AI Priority Plan</td><td>Ranks open punch items by criticality and generates a day-by-day closeout action plan</td><td>Punch List page / AI Assistant page</td></tr>
+      <tr><td>AI Budget Forecast</td><td>Analyzes SOV progress, billing history, and change orders to forecast Estimate at Completion (EAC), cash flow, and profit margin</td><td>AI Assistant page</td></tr>
+      <tr><td>AI SOV Validation</td><td>Cross-references reported % complete against daily log evidence to flag overbilling risks and underclaimed items</td><td>SOV page / AI Assistant page</td></tr>
     </table>
-    <div class="callout callout-info">ℹ️ <strong>The AI is read-only.</strong> It analyzes your data and generates reports but never modifies your project records.</div>
+    <p>All 6 features are also accessible from the <strong>AI Intelligence Hub</strong> on the Project Overview page.</p>
+    <div class="callout callout-info">The AI is read-only. It analyzes your data and generates reports but never modifies your project records. Ensure you have project data (SOV, logs, etc.) for meaningful analysis — empty projects will not produce useful results.</div>
 
-    <h2 id="troubleshooting">16. Troubleshooting</h2>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 20. USER MANAGEMENT (ADMIN) -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="users">20. User Management (Admin Only)</h2>
+    <p>User account management is available from the header navigation bar for Admin and Ops Manager roles.</p>
+    <ul>
+      <li><strong>Admin</strong> can change passwords for all users: Admin, Ops Mgr, PM, and Viewer (3D)</li>
+      <li><strong>Ops Manager</strong> can change the PM password only</li>
+      <li>Passwords must be at least 8 characters and are confirmed with a re-entry field</li>
+    </ul>
+    <h4>Password Security</h4>
+    <p>All passwords are hashed using <strong>PBKDF2</strong> with a unique per-user salt before storage. Plaintext passwords are never stored in the database.</p>
+
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 21. SECURITY -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="security">21. Security Features</h2>
+    <table>
+      <tr><th>Feature</th><th>Description</th></tr>
+      <tr><td>Project Ownership</td><td>Users only see projects they created. Admin users can see all projects.</td></tr>
+      <tr><td>Rate Limiting</td><td>All API endpoints are rate-limited. Heavy endpoints (AI features, SmartPlans import) have stricter limits.</td></tr>
+      <tr><td>CORS Whitelist</td><td>Cross-origin requests are restricted to approved domains only.</td></tr>
+      <tr><td>PBKDF2 Password Hashing</td><td>Passwords are hashed with PBKDF2 and unique per-user salts. Plaintext passwords are never stored.</td></tr>
+      <tr><td>JWT Authentication</td><td>All API requests require a valid Bearer token. Tokens expire and sessions can be invalidated via logout.</td></tr>
+      <tr><td>Server-Side Validation</td><td>All inputs are validated on the server. The API returns structured error codes for import/reimport failures.</td></tr>
+    </table>
+
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 22. HEALTH MONITORING -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="health">22. Health Monitoring</h2>
+    <p>SmartPM provides a health check endpoint for uptime monitoring and diagnostics.</p>
+    <h4>Health Endpoint</h4>
+    <p><code>GET /api/health</code></p>
+    <p>Returns the application status including:</p>
+    <ul>
+      <li>Database connectivity status</li>
+      <li>Table count in the database</li>
+      <li>Total number of users and projects</li>
+    </ul>
+
+    <h4>Database Migrations (Admin)</h4>
+    <ul>
+      <li><code>GET /api/migrations</code> — Check the status of pending database migrations</li>
+      <li><code>POST /api/migrations</code> — Run any pending migrations to update the database schema</li>
+    </ul>
+    <div class="callout callout-info">Migrations are idempotent and safe to run multiple times. They are typically needed after a SmartPM version upgrade.</div>
+
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- 23. TROUBLESHOOTING -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <h2 id="troubleshooting">23. Troubleshooting</h2>
     <table>
       <tr><th>Issue</th><th>Solution</th></tr>
-      <tr><td>Can't log in</td><td>Contact your Admin for credentials or password reset</td></tr>
-      <tr><td>Can't see delete button</td><td>Only Admin role can delete projects</td></tr>
-      <tr><td>Budget fields are locked (🔒)</td><td>Only Admin/Ops Mgr can edit budgets. PMs can edit actuals only.</td></tr>
-      <tr><td>Import fails</td><td>Ensure the file is a valid SmartPlans JSON export. Check browser console for errors.</td></tr>
-      <tr><td>AI analysis fails</td><td>Ensure you have project data (SOV, logs, etc.) for the AI to analyze. Empty projects return errors.</td></tr>
-      <tr><td>Daily report won't email</td><td>The email button uses mailto: — you need an email client configured on your device.</td></tr>
-      <tr><td>Data not saving</td><td>Check your internet connection. SmartPM requires connectivity to save to the cloud database.</td></tr>
-      <tr><td>Project list empty</td><td>Create a project or import from SmartPlans. Ensure you're logged in with the correct account.</td></tr>
+      <tr><td>Can't see my projects</td><td>Projects are scoped to the user who created them. Only Admin users can see all projects. Verify you are logged into the correct account.</td></tr>
+      <tr><td>Import fails</td><td>Ensure the JSON file is a valid SmartPlans export. The file must contain a <code>_meta.format</code> field identifying it as a SmartPlans export. Check the browser console for detailed error messages.</td></tr>
+      <tr><td>Re-import button missing</td><td>The "Re-import from SmartPlans" button only appears for projects that were originally imported from SmartPlans (those with a <code>smartplans_import_id</code>). Manually created projects cannot be re-imported.</td></tr>
+      <tr><td>Login fails</td><td>Check with your Admin for correct credentials. Passwords are case-sensitive. If your session expired, you will be automatically redirected to the login screen.</td></tr>
+      <tr><td>API rate limited</td><td>Wait 60 seconds and try again. Heavy endpoints (AI features, SmartPlans import) have stricter rate limits than standard operations.</td></tr>
+      <tr><td>Budget fields are locked</td><td>Budgeted amounts from SmartPlans are locked by design. Only Admin and Ops Manager roles can modify budget fields. PMs can edit actual quantities and hours only.</td></tr>
+      <tr><td>AI analysis fails</td><td>Ensure you have project data (SOV items, daily logs, change orders, etc.) for the AI to analyze. Empty projects will return errors.</td></tr>
+      <tr><td>Daily report won't email</td><td>The email button uses <code>mailto:</code> links. You need an email client configured on your device. Alternatively, use "Copy to Clipboard" and paste into any email.</td></tr>
+      <tr><td>Data not saving</td><td>Check your internet connection. SmartPM requires connectivity to save to the cloud database. An offline banner appears when connectivity is lost.</td></tr>
+      <tr><td>Can't delete a project</td><td>Only Admin role can delete projects. Contact your Admin if a project needs to be removed.</td></tr>
     </table>
 
   </div>
@@ -315,7 +553,7 @@
 
 <div class="footer">
   <div class="container">
-    <p>© 2026 3D Technology Services Inc. · www.3dtsi.com · SmartPM User Guide v3.0</p>
+    <p>&copy; 2026 3D Technology Services Inc. &middot; www.3dtsi.com &middot; SmartPM User Guide v2.0</p>
   </div>
 </div>
 
