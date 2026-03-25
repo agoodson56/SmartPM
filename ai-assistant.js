@@ -129,8 +129,8 @@ const AIAssistant = {
 
             const prompt = `You are a senior ELV construction project manager. Analyze these daily log entries and generate a professional progress report.
 
-PROJECT: ${project.name || 'Project'}
-CLIENT: ${project.client_name || 'N/A'}
+PROJECT: ${this._sanitizeForPrompt(project.name) || 'Project'}
+CLIENT: ${this._sanitizeForPrompt(project.client_name) || 'N/A'}
 CONTRACT VALUE: $${(project.current_contract_value || 0).toLocaleString()}
 
 DAILY LOG ENTRIES (${logs.length} total):
@@ -149,7 +149,7 @@ Format the report in clean HTML using <h3>, <p>, <ul>, <li>, and <strong> tags. 
 
             const result = await this._callGemini(prompt, { thinking: true, maxTokens: 4096 });
 
-            this._showAIModal('Progress Report', '📊', result,
+            this._showAIModal('Progress Report', '📊', '<div style="white-space:pre-wrap;">' + esc(result) + '</div>',
                 `<button class="btn btn-primary" onclick="AIAssistant._copyToClipboard(this.closest('.ai-result').querySelector('.ai-result-body'))">📋 Copy Report</button>`
             );
 
@@ -182,10 +182,10 @@ Format the report in clean HTML using <h3>, <p>, <ul>, <li>, and <strong> tags. 
 
             const prompt = `You are a senior ELV estimator and project manager. Based on this project data, identify gaps, ambiguities, or potential issues that should be clarified via RFIs (Requests for Information).
 
-PROJECT: ${project.name || 'Project'}
-TYPE: ${project.type || 'ELV'}
-DISCIPLINES: ${project.disciplines || 'General'}
-CLIENT: ${project.client_name || 'N/A'}
+PROJECT: ${this._sanitizeForPrompt(project.name) || 'Project'}
+TYPE: ${this._sanitizeForPrompt(project.type) || 'ELV'}
+DISCIPLINES: ${this._sanitizeForPrompt(project.disciplines) || 'General'}
+CLIENT: ${this._sanitizeForPrompt(project.client_name) || 'N/A'}
 CONTRACT VALUE: $${(project.current_contract_value || 0).toLocaleString()}
 
 SOV LINE ITEMS (${Array.isArray(sov) ? sov.length : 0}):
@@ -220,20 +220,20 @@ Respond in valid JSON array format:
                 const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
                 rfis = JSON.parse(cleaned);
             } catch {
-                this._showAIModal('Smart RFI Suggestions', '❓', `<div style="white-space:pre-wrap;">${result}</div>`);
+                this._showAIModal('Smart RFI Suggestions', '❓', `<div style="white-space:pre-wrap;">${esc(result)}</div>`);
                 return;
             }
 
             const rfiHtml = rfis.map((r, i) => `
         <div class="ai-rfi-card">
           <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
-            <div style="font-weight:700;color:var(--text-primary);">${i + 1}. ${r.subject}</div>
-            <span class="badge badge--${r.priority === 'critical' ? 'error' : r.priority === 'high' ? 'amber' : 'active'}">${r.priority}</span>
+            <div style="font-weight:700;color:var(--text-primary);">${i + 1}. ${esc(r.subject)}</div>
+            <span class="badge badge--${r.priority === 'critical' ? 'error' : r.priority === 'high' ? 'amber' : 'active'}">${esc(r.priority)}</span>
           </div>
-          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">${r.question}</div>
+          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">${esc(r.question)}</div>
           <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span class="discipline-tag">${r.discipline}</span>
-            <button class="btn btn-sm btn-primary" onclick="AIAssistant._createRFI('${projectId}', ${JSON.stringify(r).replace(/'/g, "\\'")})">+ Create RFI</button>
+            <span class="discipline-tag">${esc(r.discipline)}</span>
+            <button class="btn btn-sm btn-primary" data-rfi='${esc(JSON.stringify(r))}' onclick="AIAssistant._createRFI('${projectId}', JSON.parse(this.dataset.rfi))">+ Create RFI</button>
           </div>
         </div>`).join('');
 
@@ -311,7 +311,7 @@ Respond in valid JSON array format:
 
             const prompt = `You are a senior ELV construction cost analyst. Analyze these change orders and their cumulative impact on the project.
 
-PROJECT: ${project.name || 'Project'}
+PROJECT: ${this._sanitizeForPrompt(project.name) || 'Project'}
 ORIGINAL CONTRACT: $${(project.original_contract_value || 0).toLocaleString()}
 CURRENT CONTRACT: $${(project.current_contract_value || 0).toLocaleString()}
 START DATE: ${project.start_date || 'N/A'}
@@ -340,7 +340,7 @@ Provide a comprehensive analysis in HTML format:
 Use <h3>, <p>, <ul>, <li>, <strong>, and <table> tags. Include dollar amounts and percentages. Be specific and actionable.`;
 
             const result = await this._callGemini(prompt, { thinking: true, maxTokens: 6144 });
-            this._showAIModal('Change Order Impact Analysis', '📝', result);
+            this._showAIModal('Change Order Impact Analysis', '📝', '<div style="white-space:pre-wrap;">' + esc(result) + '</div>');
 
         } catch (err) {
             App.closeModal();
@@ -380,8 +380,8 @@ Use <h3>, <p>, <ul>, <li>, <strong>, and <table> tags. Include dollar amounts an
 
             const prompt = `You are a senior ELV construction superintendent managing project closeout. Prioritize these punch list items for maximum efficiency.
 
-PROJECT: ${project.name || 'Project'}
-DISCIPLINES: ${project.disciplines || 'General'}
+PROJECT: ${this._sanitizeForPrompt(project.name) || 'Project'}
+DISCIPLINES: ${this._sanitizeForPrompt(project.disciplines) || 'General'}
 COMPLETION DATE: ${project.substantial_completion || 'ASAP'}
 
 OPEN PUNCH ITEMS (${openItems.length}):
@@ -417,7 +417,7 @@ Analyze and provide:
 Format in HTML with <h3>, <p>, <ul>, <li>, <table>, <strong>.`;
 
             const result = await this._callGemini(prompt, { thinking: true, maxTokens: 6144 });
-            this._showAIModal('Punch List Priority Plan', '✅', result);
+            this._showAIModal('Punch List Priority Plan', '✅', '<div style="white-space:pre-wrap;">' + esc(result) + '</div>');
 
         } catch (err) {
             App.closeModal();
@@ -450,7 +450,7 @@ Format in HTML with <h3>, <p>, <ul>, <li>, <table>, <strong>.`;
 
             const prompt = `You are a senior ELV construction financial analyst. Analyze this project's financial data and forecast the final project cost.
 
-PROJECT: ${project.name || 'Project'}
+PROJECT: ${this._sanitizeForPrompt(project.name) || 'Project'}
 ORIGINAL CONTRACT: $${(project.original_contract_value || 0).toLocaleString()}
 CURRENT CONTRACT: $${(project.current_contract_value || 0).toLocaleString()}
 TOTAL BILLED: $${(project.total_billed || 0).toLocaleString()}
@@ -488,7 +488,7 @@ Provide a comprehensive financial forecast in HTML:
 Use <h3>, <p>, <ul>, <li>, <table>, <strong>. Include specific dollar amounts and percentages throughout.`;
 
             const result = await this._callGemini(prompt, { thinking: true, maxTokens: 8192 });
-            this._showAIModal('Budget Forecast & Analysis', '💰', result);
+            this._showAIModal('Budget Forecast & Analysis', '💰', '<div style="white-space:pre-wrap;">' + esc(result) + '</div>');
 
         } catch (err) {
             App.closeModal();
@@ -525,7 +525,7 @@ Use <h3>, <p>, <ul>, <li>, <table>, <strong>. Include specific dollar amounts an
 
             const prompt = `You are a senior ELV construction auditor performing a progress validation. Cross-check the reported Schedule of Values completion percentages against the daily log records and infrastructure tracking data.
 
-PROJECT: ${project.name || 'Project'}
+PROJECT: ${this._sanitizeForPrompt(project.name) || 'Project'}
 Current Contract: $${(project.current_contract_value || 0).toLocaleString()}
 
 SOV LINE ITEMS (${sov.length}):
@@ -564,7 +564,7 @@ Perform a thorough audit and provide:
 Use <h3>, <p>, <ul>, <li>, <table>, <strong>. Use 🟢🟡🔴 indicators for each line item's validation status. Be specific with dollar amounts.`;
 
             const result = await this._callGemini(prompt, { thinking: true, maxTokens: 8192 });
-            this._showAIModal('SOV Progress Validation', '📋', result);
+            this._showAIModal('SOV Progress Validation', '📋', '<div style="white-space:pre-wrap;">' + esc(result) + '</div>');
 
         } catch (err) {
             App.closeModal();
@@ -575,6 +575,11 @@ Use <h3>, <p>, <ul>, <li>, <table>, <strong>. Use 🟢🟡🔴 indicators for ea
     // ═══════════════════════════════════════════════════════════
     // UTILITIES
     // ═══════════════════════════════════════════════════════════
+
+    _sanitizeForPrompt(str) {
+        if (!str) return '';
+        return String(str).replace(/<[^>]*>/g, '').substring(0, 500);
+    },
 
     _copyToClipboard(el) {
         const text = el.innerText || el.textContent;
