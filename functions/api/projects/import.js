@@ -298,10 +298,24 @@ export async function onRequestPost(context) {
 
     // 2. Import SOV line items — each BOM category → one SOV line item
     //    Each individual item within a category is tracked in the detail.
+    //    Filter out summary/subtotal/rollup categories that double-count real items
+    //    (same filter as export-engine.js)
     let sovItemCount = 0;
-    if (bom.categories && bom.categories.length > 0) {
+    const summaryPatterns = /subtotal|summary|recap|rollup|total.*table/i;
+    const filteredCategories = (bom.categories || []).filter(cat => {
+      // Skip categories whose name matches summary patterns
+      if (summaryPatterns.test(cat.name)) return false;
+      // Skip categories where ALL item names are just dollar amounts (e.g. "$15,373.52")
+      const dollarNameItems = (cat.items || []).filter(i => /^\$[\d,]+\.?\d*$/.test((i.item || i.name || '').trim()));
+      if (dollarNameItems.length > 0 && dollarNameItems.length === (cat.items || []).length) return false;
+      // Skip categories with $0 scheduled value
+      const catValue = cat.subtotal || (cat.items || []).reduce((s, i) => s + (i.extCost || 0), 0);
+      if (catValue <= 0) return false;
+      return true;
+    });
+    if (filteredCategories.length > 0) {
       let sortOrder = 0;
-      for (const cat of bom.categories) {
+      for (const cat of filteredCategories) {
         const itemId = crypto.randomUUID().replace(/-/g, '');
         sortOrder++;
         sovItemCount++;

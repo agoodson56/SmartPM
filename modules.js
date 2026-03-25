@@ -292,9 +292,9 @@ App.addWBSTask = async function () {
 };
 
 
-// ─── SOV (Schedule of Values) ──────────────────────────────────
+// ─── SOV (Schedule of Values) — AIA G703 ──────────────────────
 App.renderSOV = async function (c) {
-    c.innerHTML = `<div class="page-header"><div><h1 class="page-title">📋 Schedule of Values</h1><p class="page-subtitle">AIA G703 line items for progress billing</p></div><div class="page-actions">${AIAssistant.renderAIButton('sov-validate', this.state.projectId)}<button class="btn btn-primary" id="btn-add-sov">+ Add Line Item</button></div></div><div id="sov-balance" class="metric-grid" style="margin-bottom:20px;"></div><div class="card"><table class="data-table" id="sov-table"><thead><tr><th>Item #</th><th>Description</th><th>Division</th><th style="text-align:right">Scheduled Value</th><th style="text-align:right">Material</th><th style="text-align:right">Labor</th><th style="text-align:right">% Complete</th><th>Actions</th></tr></thead><tbody id="sov-body"><tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">Loading...</td></tr></tbody></table></div>`;
+    c.innerHTML = `<div class="page-header"><div><h1 class="page-title">📋 Schedule of Values</h1><p class="page-subtitle">AIA G703 line items for progress billing</p></div><div class="page-actions">${AIAssistant.renderAIButton('sov-validate', this.state.projectId)}<button class="btn btn-primary" id="btn-add-sov">+ Add Line Item</button></div></div><div id="sov-balance" class="metric-grid" style="margin-bottom:20px;"></div><div class="card"><table class="data-table" id="sov-table"><thead><tr><th>Item #</th><th>Description</th><th style="text-align:right">Scheduled Value</th><th style="text-align:right">% Complete</th><th style="text-align:right">Previously Billed</th><th style="text-align:right">This Period</th><th>Actions</th></tr></thead><tbody id="sov-body"><tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted)">Loading...</td></tr></tbody></table></div>`;
     const pid = this.state.projectId;
     const res = await API.getSOV(pid);
     if (res.error) { this.toast(res.error, 'error'); return; }
@@ -305,17 +305,26 @@ App.renderSOV = async function (c) {
     <div class="metric-card metric-card--emerald"><div class="metric-icon">💰</div><div class="metric-value">$${formatMoney(bal.contractValue)}</div><div class="metric-label">Contract Value</div></div>
     <div class="metric-card ${bal.balanced ? 'metric-card--emerald' : 'metric-card--rose'}"><div class="metric-icon">${bal.balanced ? '✅' : '⚠️'}</div><div class="metric-value">$${formatMoney(Math.abs(bal.difference))}</div><div class="metric-label">${bal.balanced ? 'Balanced' : 'Difference'}</div></div>`;
     const tbody = document.getElementById('sov-body');
-    if (items.length === 0) { tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">No SOV items yet. Add line items or import from SmartPlans.</td></tr>`; }
-    else { tbody.innerHTML = items.map(i => `<tr><td><strong>${esc(i.item_number)}</strong></td><td>${esc(i.description)}</td><td>${esc(i.division || '—')}</td><td style="text-align:right">$${formatMoney(i.scheduled_value)}</td><td style="text-align:right">$${formatMoney(i.material_cost)}</td><td style="text-align:right">$${formatMoney(i.labor_cost)}</td><td style="text-align:right">${(i.total_completed_pct || 0).toFixed(1)}%</td><td><button class="btn-icon" onclick="App.editSOVItem('${i.id}')">✏️</button><button class="btn-icon" onclick="App.deleteSOVItem('${i.id}')">🗑️</button></td></tr>`).join(''); }
+    if (items.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted)">No SOV items yet. Add line items or import from SmartPlans.</td></tr>`; }
+    else { tbody.innerHTML = items.map(i => {
+        const prevBilled = i.total_completed_value || 0;
+        const thisPeriod = 0; // $0 on SOV page — only non-zero during active billing
+        return `<tr><td><strong>${esc(i.item_number)}</strong></td><td>${esc(i.description)}</td><td style="text-align:right">$${formatMoney(i.scheduled_value)}</td><td style="text-align:right">${(i.total_completed_pct || 0).toFixed(1)}%</td><td style="text-align:right">$${formatMoney(prevBilled)}</td><td style="text-align:right">$${formatMoney(thisPeriod)}</td><td><button class="btn-icon" onclick="App.editSOVItem('${i.id}')">✏️</button><button class="btn-icon" onclick="App.deleteSOVItem('${i.id}')">🗑️</button></td></tr>`;
+    }).join(''); }
     document.getElementById('btn-add-sov').addEventListener('click', () => this.addSOVItem());
 };
 App.addSOVItem = function () {
     const pid = this.state.projectId;
-    this.showModal('Add SOV Line Item', `<div class="form-grid"><div class="form-group"><label class="form-label">Item Number *</label><input class="form-input" id="sov-num" placeholder="e.g. 27-001"></div><div class="form-group"><label class="form-label">Division</label><select class="form-select" id="sov-div"><option value="">Select...</option><option value="Division 27">Division 27</option><option value="Division 28">Division 28</option><option value="Special Conditions">Special Conditions</option><option value="General Conditions">General Conditions</option></select></div><div class="form-group form-full"><label class="form-label">Description *</label><input class="form-input" id="sov-desc" placeholder="Line item description"></div><div class="form-group"><label class="form-label">Material Cost ($)</label><input class="form-input" id="sov-mat" type="number" step="0.01" value="0"></div><div class="form-group"><label class="form-label">Labor Cost ($)</label><input class="form-input" id="sov-lab" type="number" step="0.01" value="0"></div><div class="form-group"><label class="form-label">Equipment Cost ($)</label><input class="form-input" id="sov-eq" type="number" step="0.01" value="0"></div><div class="form-group"><label class="form-label">Subcontractor ($)</label><input class="form-input" id="sov-sub" type="number" step="0.01" value="0"></div></div>`, async () => {
+    this.showModal('Add SOV Line Item', `<div class="form-grid"><div class="form-group"><label class="form-label">Item Number *</label><input class="form-input" id="sov-num" placeholder="e.g. 27-001"></div><div class="form-group"><label class="form-label">Division</label><select class="form-select" id="sov-div"><option value="">Select...</option><option value="Division 27">Division 27</option><option value="Division 28">Division 28</option><option value="Special Conditions">Special Conditions</option><option value="General Conditions">General Conditions</option></select></div><div class="form-group form-full"><label class="form-label">Description *</label><input class="form-input" id="sov-desc" placeholder="Line item description"></div><div class="form-group form-full"><label class="form-label">Scheduled Value ($) *</label><input class="form-input" id="sov-val" type="number" step="0.01" value="0" placeholder="Total contract value for this line"></div></div><details style="margin-top:12px;"><summary style="cursor:pointer;color:var(--text-muted);font-size:0.875rem;">Optional: Cost Breakdown (Material / Labor / Equipment / Sub)</summary><div class="form-grid" style="margin-top:8px;"><div class="form-group"><label class="form-label">Material ($)</label><input class="form-input" id="sov-mat" type="number" step="0.01" value="0"></div><div class="form-group"><label class="form-label">Labor ($)</label><input class="form-input" id="sov-lab" type="number" step="0.01" value="0"></div><div class="form-group"><label class="form-label">Equipment ($)</label><input class="form-input" id="sov-eq" type="number" step="0.01" value="0"></div><div class="form-group"><label class="form-label">Subcontractor ($)</label><input class="form-input" id="sov-sub" type="number" step="0.01" value="0"></div></div></details>`, async () => {
         const num = document.getElementById('sov-num').value.trim();
         const desc = document.getElementById('sov-desc').value.trim();
         if (!num || !desc) { this.toast('Item number and description required', 'warning'); return; }
-        const res = await API.createSOVItem(pid, { item_number: num, description: desc, division: document.getElementById('sov-div').value, material_cost: parseFloat(document.getElementById('sov-mat').value) || 0, labor_cost: parseFloat(document.getElementById('sov-lab').value) || 0, equipment_cost: parseFloat(document.getElementById('sov-eq').value) || 0, sub_cost: parseFloat(document.getElementById('sov-sub').value) || 0 });
+        const scheduledValue = parseFloat(document.getElementById('sov-val').value) || 0;
+        const mat = parseFloat(document.getElementById('sov-mat').value) || 0;
+        const lab = parseFloat(document.getElementById('sov-lab').value) || 0;
+        const eq = parseFloat(document.getElementById('sov-eq').value) || 0;
+        const sub = parseFloat(document.getElementById('sov-sub').value) || 0;
+        const res = await API.createSOVItem(pid, { item_number: num, description: desc, division: document.getElementById('sov-div').value, scheduled_value: scheduledValue || (mat + lab + eq + sub), material_cost: mat, labor_cost: lab, equipment_cost: eq, sub_cost: sub });
         if (res.error) { this.toast(res.error, 'error'); return; }
         this.closeModal(); this.toast('SOV item added', 'success');
         this.renderSOV(document.getElementById('project-content'));
@@ -327,8 +336,9 @@ App.editSOVItem = async function (itemId) {
     if (res.error) { this.toast(res.error, 'error'); return; }
     const item = (res.items || []).find(i => i.id === itemId);
     if (!item) { this.toast('Item not found', 'error'); return; }
-    this.showModal('Edit SOV Item', `<div class="form-grid"><div class="form-group"><label class="form-label">Item Number</label><input class="form-input" id="se-num" value="${esc(item.item_number)}"></div><div class="form-group"><label class="form-label">Division</label><select class="form-select" id="se-div"><option value="">Select...</option><option value="Division 27" ${item.division === 'Division 27' ? 'selected' : ''}>Division 27</option><option value="Division 28" ${item.division === 'Division 28' ? 'selected' : ''}>Division 28</option><option value="Special Conditions" ${item.division === 'Special Conditions' ? 'selected' : ''}>Special Conditions</option><option value="General Conditions" ${item.division === 'General Conditions' ? 'selected' : ''}>General Conditions</option></select></div><div class="form-group form-full"><label class="form-label">Description</label><input class="form-input" id="se-desc" value="${esc(item.description)}"></div><div class="form-group"><label class="form-label">Material ($)</label><input class="form-input" id="se-mat" type="number" step="0.01" value="${item.material_cost || 0}"></div><div class="form-group"><label class="form-label">Labor ($)</label><input class="form-input" id="se-lab" type="number" step="0.01" value="${item.labor_cost || 0}"></div><div class="form-group"><label class="form-label">Equipment ($)</label><input class="form-input" id="se-eq" type="number" step="0.01" value="${item.equipment_cost || 0}"></div><div class="form-group"><label class="form-label">Subcontractor ($)</label><input class="form-input" id="se-sub" type="number" step="0.01" value="${item.sub_cost || 0}"></div><div class="form-group"><label class="form-label">% Complete</label><input class="form-input" id="se-pct" type="number" step="0.1" value="${item.total_completed_pct || 0}"></div></div>`, async () => {
-        const r = await API.updateSOVItem(pid, itemId, { item_number: document.getElementById('se-num').value.trim(), description: document.getElementById('se-desc').value.trim(), division: document.getElementById('se-div').value, material_cost: parseFloat(document.getElementById('se-mat').value) || 0, labor_cost: parseFloat(document.getElementById('se-lab').value) || 0, equipment_cost: parseFloat(document.getElementById('se-eq').value) || 0, sub_cost: parseFloat(document.getElementById('se-sub').value) || 0, total_completed_pct: parseFloat(document.getElementById('se-pct').value) || 0 });
+    this.showModal('Edit SOV Item', `<div class="form-grid"><div class="form-group"><label class="form-label">Item Number</label><input class="form-input" id="se-num" value="${esc(item.item_number)}"></div><div class="form-group"><label class="form-label">Division</label><select class="form-select" id="se-div"><option value="">Select...</option><option value="Division 27" ${item.division === 'Division 27' ? 'selected' : ''}>Division 27</option><option value="Division 28" ${item.division === 'Division 28' ? 'selected' : ''}>Division 28</option><option value="Special Conditions" ${item.division === 'Special Conditions' ? 'selected' : ''}>Special Conditions</option><option value="General Conditions" ${item.division === 'General Conditions' ? 'selected' : ''}>General Conditions</option></select></div><div class="form-group form-full"><label class="form-label">Description</label><input class="form-input" id="se-desc" value="${esc(item.description)}"></div><div class="form-group form-full"><label class="form-label">Scheduled Value ($)</label><input class="form-input" id="se-val" type="number" step="0.01" value="${item.scheduled_value || 0}"></div></div><details style="margin-top:12px;"><summary style="cursor:pointer;color:var(--text-muted);font-size:0.875rem;">Optional: Cost Breakdown</summary><div class="form-grid" style="margin-top:8px;"><div class="form-group"><label class="form-label">Material ($)</label><input class="form-input" id="se-mat" type="number" step="0.01" value="${item.material_cost || 0}"></div><div class="form-group"><label class="form-label">Labor ($)</label><input class="form-input" id="se-lab" type="number" step="0.01" value="${item.labor_cost || 0}"></div><div class="form-group"><label class="form-label">Equipment ($)</label><input class="form-input" id="se-eq" type="number" step="0.01" value="${item.equipment_cost || 0}"></div><div class="form-group"><label class="form-label">Subcontractor ($)</label><input class="form-input" id="se-sub" type="number" step="0.01" value="${item.sub_cost || 0}"></div></div></details>`, async () => {
+        const scheduledValue = parseFloat(document.getElementById('se-val').value) || 0;
+        const r = await API.updateSOVItem(pid, itemId, { item_number: document.getElementById('se-num').value.trim(), description: document.getElementById('se-desc').value.trim(), division: document.getElementById('se-div').value, scheduled_value: scheduledValue, material_cost: parseFloat(document.getElementById('se-mat').value) || 0, labor_cost: parseFloat(document.getElementById('se-lab').value) || 0, equipment_cost: parseFloat(document.getElementById('se-eq').value) || 0, sub_cost: parseFloat(document.getElementById('se-sub').value) || 0 });
         if (r.error) { this.toast(r.error, 'error'); return; }
         this.closeModal(); this.toast('SOV item updated', 'success');
         this.renderSOV(document.getElementById('project-content'));
@@ -342,7 +352,7 @@ App.deleteSOVItem = async function (itemId) {
     this.renderSOV(document.getElementById('project-content'));
 };
 
-// ─── BILLING ───────────────────────────────────────────────────
+// ─── BILLING — AIA G702/G703 ──────────────────────────────────
 App.renderBilling = async function (c) {
     c.innerHTML = `<div class="page-header"><div><h1 class="page-title">💰 Progress Billing</h1><p class="page-subtitle">AIA G702/G703 payment applications</p></div><div class="page-actions"><button class="btn btn-primary" id="btn-new-billing">+ New Billing Period</button></div></div><div id="billing-list"><div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-title">Loading...</div></div></div>`;
     const pid = this.state.projectId;
@@ -364,32 +374,101 @@ App.viewBillingPeriod = async function (periodId) {
     const res = await API.getBillingPeriod(pid, periodId);
     if (res.error) { this.toast(res.error, 'error'); return; }
     const p = res.period; const lines = res.lineItems || [];
-    const totalCompleted = lines.reduce((s, l) => s + (l.total_completed_value || 0), 0);
+    const retainagePct = p.retainage_pct || 10;
     const statuses = ['draft', 'submitted', 'approved', 'paid'];
-    this.showModal(`Billing Period #${p.period_number}`, `
-    <div class="metric-grid" style="margin-bottom:16px;">
-      <div class="metric-card metric-card--sky"><div class="metric-value">$${formatMoney(p.contract_sum_to_date)}</div><div class="metric-label">Contract Sum</div></div>
-      <div class="metric-card metric-card--emerald"><div class="metric-value">$${formatMoney(totalCompleted)}</div><div class="metric-label">Completed</div></div>
-      <div class="metric-card metric-card--amber"><div class="metric-value">$${formatMoney(p.current_payment_due)}</div><div class="metric-label">Payment Due</div></div>
+
+    // Recalculate G702 summary from line items
+    const _recalcSummary = () => {
+        let totalCompletedStored = 0;
+        lines.forEach((l, idx) => {
+            const pctInput = document.querySelector(`[data-bp-line="${idx}"][data-bp-field="pct"]`);
+            const curPct = parseFloat(pctInput ? pctInput.value : l.total_completed_pct) || 0;
+            totalCompletedStored += (l.scheduled_value || 0) * curPct / 100;
+        });
+        const retainage = totalCompletedStored * retainagePct / 100;
+        const earnedLessRetainage = totalCompletedStored - retainage;
+        const lessPrev = p.less_previous_payments || 0;
+        const paymentDue = earnedLessRetainage - lessPrev;
+        const el = document.getElementById('bp-g702-summary');
+        if (el) {
+            el.querySelector('[data-g702="total-completed"]').textContent = '$' + formatMoney(totalCompletedStored);
+            el.querySelector('[data-g702="retainage"]').textContent = '$' + formatMoney(retainage);
+            el.querySelector('[data-g702="earned-less-ret"]').textContent = '$' + formatMoney(earnedLessRetainage);
+            el.querySelector('[data-g702="payment-due"]').textContent = '$' + formatMoney(paymentDue);
+        }
+        // Update per-line "This Period $" and "Total Completed $" cells
+        lines.forEach((l, idx) => {
+            const pctInput = document.querySelector(`[data-bp-line="${idx}"][data-bp-field="pct"]`);
+            const curPct = parseFloat(pctInput ? pctInput.value : l.total_completed_pct) || 0;
+            const prevPct = l.previous_completed_pct || 0;
+            const scheduled = l.scheduled_value || 0;
+            const thisPeriodCell = document.querySelector(`[data-bp-line="${idx}"][data-bp-field="this-period"]`);
+            const totalCompCell = document.querySelector(`[data-bp-line="${idx}"][data-bp-field="total-comp"]`);
+            if (thisPeriodCell) thisPeriodCell.textContent = '$' + formatMoney(scheduled * (curPct - prevPct) / 100);
+            if (totalCompCell) totalCompCell.textContent = '$' + formatMoney(scheduled * curPct / 100);
+        });
+    };
+
+    // Build initial summary values
+    const initTotalCompleted = lines.reduce((s, l) => s + ((l.scheduled_value || 0) * (l.total_completed_pct || 0) / 100), 0);
+    const initRetainage = initTotalCompleted * retainagePct / 100;
+    const initEarnedLessRet = initTotalCompleted - initRetainage;
+    const initPaymentDue = initEarnedLessRet - (p.less_previous_payments || 0);
+
+    this.showModal(`Billing Period #${p.period_number} — AIA G702`, `
+    <div id="bp-g702-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:16px;padding:12px;background:var(--bg-secondary);border-radius:8px;font-size:0.875rem;">
+      <div>Original Contract Sum: <strong>$${formatMoney(p.original_contract)}</strong></div>
+      <div>Net Change Orders: <strong>$${formatMoney(p.net_change_orders)}</strong></div>
+      <div>Contract Sum to Date: <strong>$${formatMoney(p.contract_sum_to_date)}</strong></div>
+      <div>Total Completed & Stored: <strong data-g702="total-completed">$${formatMoney(initTotalCompleted)}</strong></div>
+      <div>Retainage (${retainagePct}%): <strong data-g702="retainage">$${formatMoney(initRetainage)}</strong></div>
+      <div>Total Earned Less Retainage: <strong data-g702="earned-less-ret">$${formatMoney(initEarnedLessRet)}</strong></div>
+      <div>Less Previous Payments: <strong>$${formatMoney(p.less_previous_payments)}</strong></div>
+      <div style="font-size:1rem;">Current Payment Due: <strong style="color:var(--success)" data-g702="payment-due">$${formatMoney(initPaymentDue)}</strong></div>
     </div>
     <div style="margin-bottom:12px;display:flex;gap:12px;align-items:center;">
       <label class="form-label" style="margin:0;">Status:</label>
       <select class="form-select" id="bp-status" style="width:auto;">${statuses.map(s => `<option value="${s}" ${p.status === s ? 'selected' : ''}>${formatStatus(s)}</option>`).join('')}</select>
     </div>
-    <div style="max-height:400px;overflow-y:auto;"><table class="data-table"><thead><tr><th>Item</th><th>Description</th><th style="text-align:right">Scheduled</th><th style="text-align:right">% Complete</th><th style="text-align:right">This Period ($)</th></tr></thead><tbody>${lines.map((l, idx) => `<tr><td>${esc(l.item_number)}</td><td>${esc(l.description)}</td><td style="text-align:right">$${formatMoney(l.scheduled_value)}</td><td style="text-align:right"><input class="form-input" style="width:80px;text-align:right;padding:4px 8px;" type="number" step="0.1" min="0" max="100" data-bp-line="${idx}" data-bp-field="pct" value="${(l.total_completed_pct || 0).toFixed(1)}"></td><td style="text-align:right"><input class="form-input" style="width:100px;text-align:right;padding:4px 8px;" type="number" step="0.01" data-bp-line="${idx}" data-bp-field="period" value="${(l.work_completed_this_period || 0).toFixed(2)}"></td></tr>`).join('')}</tbody></table></div>`, async () => {
+    <div style="max-height:400px;overflow-y:auto;"><table class="data-table" style="font-size:0.8125rem;"><thead><tr><th>Item #</th><th>Description</th><th style="text-align:right">Scheduled Value</th><th style="text-align:right">Prev %</th><th style="text-align:right">Prev Amt</th><th style="text-align:right">Current %</th><th style="text-align:right">This Period $</th><th style="text-align:right">Total Completed $</th></tr></thead><tbody>${lines.map((l, idx) => {
+        const prevPct = l.previous_completed_pct || 0;
+        const prevAmt = l.previous_completed_value || 0;
+        const curPct = l.total_completed_pct || 0;
+        const scheduled = l.scheduled_value || 0;
+        const thisPeriodAmt = scheduled * (curPct - prevPct) / 100;
+        const totalCompAmt = scheduled * curPct / 100;
+        return `<tr><td>${esc(l.item_number)}</td><td>${esc(l.description)}</td><td style="text-align:right">$${formatMoney(scheduled)}</td><td style="text-align:right;color:var(--text-muted)">${prevPct.toFixed(1)}%</td><td style="text-align:right;color:var(--text-muted)">$${formatMoney(prevAmt)}</td><td style="text-align:right"><input class="form-input" style="width:72px;text-align:right;padding:4px 6px;" type="number" step="0.1" min="0" max="100" data-bp-line="${idx}" data-bp-field="pct" value="${curPct.toFixed(1)}"></td><td style="text-align:right" data-bp-line="${idx}" data-bp-field="this-period">$${formatMoney(thisPeriodAmt)}</td><td style="text-align:right" data-bp-line="${idx}" data-bp-field="total-comp">$${formatMoney(totalCompAmt)}</td></tr>`;
+    }).join('')}</tbody></table></div>`, async () => {
         const updatedLines = lines.map((l, idx) => {
             const pctInput = document.querySelector(`[data-bp-line="${idx}"][data-bp-field="pct"]`);
-            const periodInput = document.querySelector(`[data-bp-line="${idx}"][data-bp-field="period"]`);
-            const pct = parseFloat(pctInput?.value) || 0;
-            const thisPeriod = parseFloat(periodInput?.value) || 0;
-            const completedValue = (l.scheduled_value || 0) * pct / 100;
-            return { id: l.id, sov_item_id: l.sov_item_id, total_completed_pct: pct, total_completed_value: completedValue, work_completed_this_period: thisPeriod };
+            const curPct = parseFloat(pctInput?.value) || 0;
+            const prevPct = l.previous_completed_pct || 0;
+            const scheduled = l.scheduled_value || 0;
+            const completedValue = scheduled * curPct / 100;
+            const thisPeriod = scheduled * (curPct - prevPct) / 100;
+            return { id: l.id, sov_item_id: l.sov_item_id, total_completed_pct: curPct, total_completed_value: completedValue, work_completed_this_period: thisPeriod };
         });
-        const totalEarned = updatedLines.reduce((s, l) => s + l.total_completed_value, 0);
-        const r = await API.updateBillingPeriod(pid, periodId, { period: { status: document.getElementById('bp-status').value, total_completed_stored: totalEarned, current_payment_due: totalEarned - (p.less_previous_payments || 0) }, lineItems: updatedLines });
+        const totalCompletedStored = updatedLines.reduce((s, l) => s + l.total_completed_value, 0);
+        const retainage = totalCompletedStored * retainagePct / 100;
+        const earnedLessRetainage = totalCompletedStored - retainage;
+        const paymentDue = earnedLessRetainage - (p.less_previous_payments || 0);
+        const r = await API.updateBillingPeriod(pid, periodId, {
+            period: {
+                status: document.getElementById('bp-status').value,
+                total_completed_stored: totalCompletedStored,
+                retainage: retainage,
+                total_earned_less_retainage: earnedLessRetainage,
+                current_payment_due: paymentDue,
+            },
+            lineItems: updatedLines,
+        });
         if (r.error) { this.toast(r.error, 'error'); return; }
         this.closeModal(); this.toast('Billing period updated', 'success');
         this.renderBilling(document.getElementById('project-content'));
+    });
+    // Attach live-recalc listeners to % inputs
+    document.querySelectorAll('[data-bp-field="pct"]').forEach(input => {
+        input.addEventListener('input', _recalcSummary);
     });
 };
 

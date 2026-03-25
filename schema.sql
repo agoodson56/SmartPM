@@ -124,6 +124,8 @@ CREATE TABLE IF NOT EXISTS billing_line_items (
   id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
   billing_period_id TEXT NOT NULL REFERENCES billing_periods(id) ON DELETE CASCADE,
   sov_item_id TEXT NOT NULL REFERENCES sov_items(id) ON DELETE CASCADE,
+  previous_completed_pct REAL DEFAULT 0,
+  previous_completed_value REAL DEFAULT 0,
   work_completed_this_period REAL DEFAULT 0,
   stored_material_this_period REAL DEFAULT 0,
   total_completed_pct REAL DEFAULT 0,

@@ -12,7 +12,9 @@ export async function onRequestGet(context) {
         }
 
         const period = await env.DB.prepare(
-            `SELECT * FROM billing_periods WHERE id = ? AND project_id = ?`
+            `SELECT bp.*, p.retainage_pct FROM billing_periods bp
+             JOIN projects p ON bp.project_id = p.id
+             WHERE bp.id = ? AND bp.project_id = ?`
         ).bind(params.periodId, params.id).first();
 
         if (!period) return Response.json({ error: 'Billing period not found' }, { status: 404 });
