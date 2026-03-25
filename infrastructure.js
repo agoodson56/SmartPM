@@ -77,9 +77,9 @@ App.renderInfrastructure = async function (c) {
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                 <div style="display:flex;align-items:center;gap:10px;">
                   <span style="font-size:20px;">${trafficLight(oH)}</span>
-                  <span class="badge badge--${typeColor}" style="font-weight:700;">${loc.type.toUpperCase()}</span>
+                  <span class="badge badge--${typeColor}" style="font-weight:700;">${esc(loc.type.toUpperCase())}</span>
                   <div><div style="font-weight:700;font-size:15px;">${esc(loc.name)}</div>
-                  <div style="font-size:12px;color:var(--text-muted);">${[loc.building, loc.floor ? 'Floor ' + loc.floor : '', loc.room_number ? 'Rm ' + loc.room_number : ''].filter(Boolean).join(' · ') || 'No location details'}</div></div>
+                  <div style="font-size:12px;color:var(--text-muted);">${[esc(loc.building), loc.floor ? 'Floor ' + esc(loc.floor) : '', loc.room_number ? 'Rm ' + esc(loc.room_number) : ''].filter(Boolean).join(' · ') || 'No location details'}</div></div>
                 </div>
                 <div style="display:flex;gap:6px;">
                   ${oH === 'red' ? '<span class="badge badge--rose" style="font-size:10px;">⚠ OVER BUDGET</span>' : oH === 'yellow' ? '<span class="badge badge--amber" style="font-size:10px;">⚠ APPROACHING LIMIT</span>' : '<span class="badge badge--active" style="font-size:10px;">✓ ON TRACK</span>'}
@@ -157,8 +157,8 @@ App.viewLocation = async function (locId) {
   c.innerHTML = `
     <div class="page-header">
       <div>
-        <h1 class="page-title"><span style="font-size:20px;margin-right:8px;">${trafficLight(overH)}</span><span class="badge badge--${loc.type === 'mdf' ? 'sky' : loc.type === 'tr' ? 'amber' : 'emerald'}" style="font-size:14px;margin-right:8px;">${loc.type.toUpperCase()}</span>${esc(loc.name)}</h1>
-        <p class="page-subtitle">${[loc.building, loc.floor ? 'Floor ' + loc.floor : '', loc.room_number ? 'Rm ' + loc.room_number : ''].filter(Boolean).join(' · ') || 'Infrastructure Location'}${loc.description === 'AI-imported from SmartPlans analysis' ? ' · <span style="color:var(--primary);font-weight:600;">🤖 AI-Imported</span>' : ''}</p>
+        <h1 class="page-title"><span style="font-size:20px;margin-right:8px;">${trafficLight(overH)}</span><span class="badge badge--${loc.type === 'mdf' ? 'sky' : loc.type === 'tr' ? 'amber' : 'emerald'}" style="font-size:14px;margin-right:8px;">${esc(loc.type.toUpperCase())}</span>${esc(loc.name)}</h1>
+        <p class="page-subtitle">${[esc(loc.building), loc.floor ? 'Floor ' + esc(loc.floor) : '', loc.room_number ? 'Rm ' + esc(loc.room_number) : ''].filter(Boolean).join(' · ') || 'Infrastructure Location'}${loc.description === 'AI-imported from SmartPlans analysis' ? ' · <span style="color:var(--primary);font-weight:600;">🤖 AI-Imported</span>' : ''}</p>
       </div>
       <div class="page-actions">
         <button class="btn btn-secondary" id="btn-back-infra">← Back</button>
@@ -185,7 +185,7 @@ App.viewLocation = async function (locId) {
       ${items.length === 0 ? '<div class="card" style="padding:30px;text-align:center;color:var(--text-muted);">No equipment — items auto-populate from SmartPlans import.</div>' :
       `<div class="card"><table class="data-table"><thead><tr><th>Category</th><th>Item</th><th>Model</th><th style="text-align:right">Budget Qty 🔒</th><th style="text-align:right">Installed</th><th style="text-align:right">Unit Cost 🔒</th><th style="text-align:right">Budget $ 🔒</th><th style="text-align:right">Actual $</th><th>Status</th>${canEdit ? '<th></th>' : ''}</tr></thead><tbody>${items.map(i => {
         const iHealth = localHealth(i.actual_cost, i.budgeted_cost);
-        return `<tr><td><span class="badge badge--sky" style="font-size:10px;">${esc(i.category)}</span></td><td><strong>${esc(i.item_name)}</strong></td><td style="font-size:12px;">${esc(i.model || '—')}</td><td style="text-align:right">${i.budgeted_qty} ${esc(i.unit)}</td><td style="text-align:right;font-weight:600;">${i.installed_qty} ${esc(i.unit)}</td><td style="text-align:right">$${formatMoney(i.unit_cost)}</td><td style="text-align:right">$${formatMoney(i.budgeted_cost)}</td><td style="text-align:right;font-weight:600;color:${healthColor(iHealth)}">${trafficLight(iHealth)} $${formatMoney(i.actual_cost)}</td><td><span class="badge badge--${i.status === 'installed' || i.status === 'tested' ? 'active' : i.status === 'ordered' ? 'amber' : 'draft'}">${formatStatus(i.status)}</span></td>${canEdit ? `<td><button class="btn-icon" onclick="App.editItem('${i.id}',${JSON.stringify(i).replace(/"/g, '&quot;')})">✏️</button>${canBudget ? `<button class="btn-icon" onclick="App.deleteInfraEntity('item','${i.id}')">🗑️</button>` : ''}</td>` : ''}</tr>`;
+        return `<tr><td><span class="badge badge--sky" style="font-size:10px;">${esc(i.category)}</span></td><td><strong>${esc(i.item_name)}</strong></td><td style="font-size:12px;">${esc(i.model || '—')}</td><td style="text-align:right">${i.budgeted_qty} ${esc(i.unit)}</td><td style="text-align:right;font-weight:600;">${i.installed_qty} ${esc(i.unit)}</td><td style="text-align:right">$${formatMoney(i.unit_cost)}</td><td style="text-align:right">$${formatMoney(i.budgeted_cost)}</td><td style="text-align:right;font-weight:600;color:${healthColor(iHealth)}">${trafficLight(iHealth)} $${formatMoney(i.actual_cost)}</td><td><span class="badge badge--${i.status === 'installed' || i.status === 'tested' ? 'active' : i.status === 'ordered' ? 'amber' : 'draft'}">${esc(formatStatus(i.status))}</span></td>${canEdit ? `<td><button class="btn-icon" onclick="App.editItem('${i.id}',${JSON.stringify(i).replace(/"/g, '&quot;')})">✏️</button>${canBudget ? `<button class="btn-icon" onclick="App.deleteInfraEntity('item','${i.id}')">🗑️</button>` : ''}</td>` : ''}</tr>`;
       }).join('')}</tbody></table></div>`}
     </div>
 
@@ -195,7 +195,7 @@ App.viewLocation = async function (locId) {
       ${runs.length === 0 ? '<div class="card" style="padding:30px;text-align:center;color:var(--text-muted);">No cable runs — runs auto-populate from SmartPlans import.</div>' :
       `<div class="card"><table class="data-table"><thead><tr><th>Label</th><th>Type</th><th>Destination</th><th>Pathway</th><th style="text-align:right">Budget ft 🔒</th><th style="text-align:right">Installed ft</th><th style="text-align:right">Labor Hrs</th><th>Status</th>${canEdit ? '<th></th>' : ''}</tr></thead><tbody>${runs.map(r => {
         const rHealth = localHealth(r.actual_labor_hrs, r.budgeted_labor_hrs);
-        return `<tr><td><strong>${esc(r.run_label || '—')}</strong></td><td><span class="badge badge--indigo" style="font-size:10px;">${esc(r.cable_type)}</span></td><td>${esc(r.destination)}${r.destination_floor ? ' (Fl ' + esc(r.destination_floor) + ')' : ''}</td><td style="font-size:12px;">${esc(r.pathway || '—')}</td><td style="text-align:right">${formatMoney(r.budgeted_qty)}</td><td style="text-align:right;font-weight:600;">${formatMoney(r.installed_qty)}</td><td style="text-align:right;color:${healthColor(rHealth)};font-weight:600;">${trafficLight(rHealth)} ${(r.actual_labor_hrs || 0).toFixed(1)} / ${(r.budgeted_labor_hrs || 0).toFixed(1)}</td><td><span class="badge badge--${r.status === 'tested' || r.status === 'labeled' ? 'active' : r.status === 'pulled' || r.status === 'terminated' ? 'amber' : 'draft'}">${formatStatus(r.status)}</span></td>${canEdit ? `<td><button class="btn-icon" onclick="App.editRun('${r.id}',${JSON.stringify(r).replace(/"/g, '&quot;')})">✏️</button>${canBudget ? `<button class="btn-icon" onclick="App.deleteInfraEntity('run','${r.id}')">🗑️</button>` : ''}</td>` : ''}</tr>`;
+        return `<tr><td><strong>${esc(r.run_label || '—')}</strong></td><td><span class="badge badge--indigo" style="font-size:10px;">${esc(r.cable_type)}</span></td><td>${esc(r.destination)}${r.destination_floor ? ' (Fl ' + esc(r.destination_floor) + ')' : ''}</td><td style="font-size:12px;">${esc(r.pathway || '—')}</td><td style="text-align:right">${formatMoney(r.budgeted_qty)}</td><td style="text-align:right;font-weight:600;">${formatMoney(r.installed_qty)}</td><td style="text-align:right;color:${healthColor(rHealth)};font-weight:600;">${trafficLight(rHealth)} ${(r.actual_labor_hrs || 0).toFixed(1)} / ${(r.budgeted_labor_hrs || 0).toFixed(1)}</td><td><span class="badge badge--${r.status === 'tested' || r.status === 'labeled' ? 'active' : r.status === 'pulled' || r.status === 'terminated' ? 'amber' : 'draft'}">${esc(formatStatus(r.status))}</span></td>${canEdit ? `<td><button class="btn-icon" onclick="App.editRun('${r.id}',${JSON.stringify(r).replace(/"/g, '&quot;')})">✏️</button>${canBudget ? `<button class="btn-icon" onclick="App.deleteInfraEntity('run','${r.id}')">🗑️</button>` : ''}</td>` : ''}</tr>`;
       }).join('')}</tbody></table></div>`}
     </div>
 
@@ -205,7 +205,7 @@ App.viewLocation = async function (locId) {
       ${labor.length === 0 ? '<div class="card" style="padding:30px;text-align:center;color:var(--text-muted);">No labor entries added yet.</div>' :
       `<div class="card"><table class="data-table"><thead><tr><th>Task</th><th>Description</th><th>Date</th><th style="text-align:right">Crew</th><th style="text-align:right">Budget Hrs 🔒</th><th style="text-align:right">Actual Hrs</th>${canEdit ? '<th></th>' : ''}</tr></thead><tbody>${labor.map(l => {
         const lHealth = localHealth(l.actual_hours, l.budgeted_hours);
-        return `<tr><td><span class="badge badge--amber" style="font-size:10px;">${formatStatus(l.task_type)}</span></td><td>${esc(l.description || '—')}</td><td>${formatDate(l.date_worked)}</td><td style="text-align:right">${l.worker_count}</td><td style="text-align:right">${(l.budgeted_hours || 0).toFixed(1)}</td><td style="text-align:right;font-weight:600;color:${healthColor(lHealth)}">${trafficLight(lHealth)} ${(l.actual_hours || 0).toFixed(1)}</td>${canEdit ? `<td><button class="btn-icon" onclick="App.editLabor('${l.id}',${JSON.stringify(l).replace(/"/g, '&quot;')})">✏️</button>${canBudget ? `<button class="btn-icon" onclick="App.deleteInfraEntity('labor','${l.id}')">🗑️</button>` : ''}</td>` : ''}</tr>`;
+        return `<tr><td><span class="badge badge--amber" style="font-size:10px;">${esc(formatStatus(l.task_type))}</span></td><td>${esc(l.description || '—')}</td><td>${formatDate(l.date_worked)}</td><td style="text-align:right">${l.worker_count}</td><td style="text-align:right">${(l.budgeted_hours || 0).toFixed(1)}</td><td style="text-align:right;font-weight:600;color:${healthColor(lHealth)}">${trafficLight(lHealth)} ${(l.actual_hours || 0).toFixed(1)}</td>${canEdit ? `<td><button class="btn-icon" onclick="App.editLabor('${l.id}',${JSON.stringify(l).replace(/"/g, '&quot;')})">✏️</button>${canBudget ? `<button class="btn-icon" onclick="App.deleteInfraEntity('labor','${l.id}')">🗑️</button>` : ''}</td>` : ''}</tr>`;
       }).join('')}</tbody></table></div>`}
     </div>`;
 
@@ -335,7 +335,7 @@ App.editRun = function (runId, run) {
   const locId = this._currentLocId;
   const pid = this.state.projectId;
   this.showModal('Update Cable Run', `<div class="form-grid">
-      <div class="form-group form-full"><label class="form-label">Run</label><div style="font-weight:600;padding:8px 0;">${esc(run.run_label || '—')} · ${formatStatus(run.cable_type)} → ${esc(run.destination)}</div></div>
+      <div class="form-group form-full"><label class="form-label">Run</label><div style="font-weight:600;padding:8px 0;">${esc(run.run_label || '—')} · ${esc(formatStatus(run.cable_type))} → ${esc(run.destination)}</div></div>
       <div class="form-group form-full"><div style="padding:8px 12px;background:var(--bg-card);border-radius:6px;border:1px solid var(--border);font-size:12px;display:flex;gap:20px;">
         <span>🔒 Budget Length: <strong>${formatMoney(run.budgeted_qty)} ft</strong></span>
         <span>🔒 Budget Labor: <strong>${(run.budgeted_labor_hrs || 0).toFixed(1)} hrs</strong></span>
@@ -356,7 +356,7 @@ App.editLabor = function (laborId, lab) {
   const pid = this.state.projectId;
   const canBudget = this.Permissions.can('canEditInfraBudget');
   this.showModal('Update Labor Entry', `<div class="form-grid">
-      <div class="form-group form-full"><label class="form-label">Task</label><div style="font-weight:600;padding:8px 0;">${formatStatus(lab.task_type)}</div></div>
+      <div class="form-group form-full"><label class="form-label">Task</label><div style="font-weight:600;padding:8px 0;">${esc(formatStatus(lab.task_type))}</div></div>
       <div class="form-group form-full"><div style="padding:8px 12px;background:var(--bg-card);border-radius:6px;border:1px solid var(--border);font-size:12px;">
         🔒 Budgeted Hours: <strong>${(lab.budgeted_hours || 0).toFixed(1)}</strong>
       </div></div>
