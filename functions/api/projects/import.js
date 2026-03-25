@@ -302,6 +302,44 @@ export async function onRequestPost(context) {
     //    (same filter as export-engine.js)
     let sovItemCount = 0;
     const summaryPatterns = /subtotal|summary|recap|rollup|total.*table/i;
+
+    // ── Discipline-based category filtering ──
+    // Only import categories for disciplines the user selected in SmartPlans.
+    // Structured Cabling + infrastructure/equipment categories always included.
+    const selectedDisciplines = project.disciplines || [];
+    const disciplineCategoryMap = {
+      "CCTV":                /cctv|camera|surveillance|video/i,
+      "Access Control":      /access\s*control|card\s*reader|credential|door\s*hardware/i,
+      "Fire Alarm":          /fire\s*alarm|fire\s*detection|notification\s*appliance|duct\s*detector/i,
+      "Audio Visual":        /audio\s*visual|av\s|a\/v|display|speaker|projector|sound/i,
+      "Intrusion Detection": /intrusion|burglar|motion\s*sensor|glass\s*break/i,
+      "Structured Cabling":  /cabling|structured|network\s*room|telecom|mdf|idf|mpoe|backbone|horizontal|cat\s*6|fiber|patch\s*panel|cable\s*tray|j-hook|pathway|conduit|raceway/i,
+    };
+    const alwaysIncludePattern = /equipment|subcontract|special\s*condition|general\s*condition|network\s*room|telecom\s*closet|mdf|idf|mpoe|tunnel|mobiliz|bond|insurance|permit|overhead|profit|contingency|travel|per\s*diem|lift|rental|tool|safety|incidental/i;
+
+    function isCategoryForSelectedDiscipline(catName) {
+      // If no disciplines specified, include everything (backward compat)
+      if (!selectedDisciplines || selectedDisciplines.length === 0) return true;
+      // Always include infrastructure/equipment/general categories
+      if (alwaysIncludePattern.test(catName)) return true;
+      // Structured Cabling is always included
+      const effectiveDisciplines = [...selectedDisciplines];
+      if (!effectiveDisciplines.includes("Structured Cabling")) effectiveDisciplines.push("Structured Cabling");
+      // Check if matches a selected discipline
+      for (const disc of effectiveDisciplines) {
+        const pattern = disciplineCategoryMap[disc];
+        if (pattern && pattern.test(catName)) return true;
+      }
+      // If it doesn't match ANY known discipline, include it (generic category)
+      let matchesAnyDiscipline = false;
+      for (const pattern of Object.values(disciplineCategoryMap)) {
+        if (pattern.test(catName)) { matchesAnyDiscipline = true; break; }
+      }
+      if (!matchesAnyDiscipline) return true;
+      // Matches an unselected discipline — skip
+      return false;
+    }
+
     const filteredCategories = (bom.categories || []).filter(cat => {
       // Skip categories whose name matches summary patterns
       if (summaryPatterns.test(cat.name)) return false;
@@ -311,6 +349,8 @@ export async function onRequestPost(context) {
       // Skip categories with $0 scheduled value
       const catValue = cat.subtotal || (cat.items || []).reduce((s, i) => s + (i.extCost || 0), 0);
       if (catValue <= 0) return false;
+      // Skip categories for unselected disciplines
+      if (!isCategoryForSelectedDiscipline(cat.name || '')) return false;
       return true;
     });
     if (filteredCategories.length > 0) {
