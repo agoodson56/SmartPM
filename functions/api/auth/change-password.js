@@ -84,6 +84,14 @@ export async function onRequestPost(context) {
 
         console.log(`[Auth] Password changed for ${target_username} by ${data.user.username} (PBKDF2)`);
 
+        // Invalidate ALL existing sessions for the target user so they must log in with the new password
+        try {
+            await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(targetUser.id).run();
+        } catch (e) {
+            console.error('Failed to invalidate sessions after password change:', e);
+            // Session deletion failure should not block the password change
+        }
+
         try {
             await env.DB.prepare(
                 `INSERT INTO activity_log (project_id, user_id, action, entity_type, entity_id, description)

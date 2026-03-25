@@ -68,7 +68,7 @@ export async function onRequestGet(context) {
     return Response.json({ tasks: roots, flat: allTasks, totals });
   } catch (err) {
     console.error('WBS GET error:', err);
-    return Response.json({ error: 'Failed to load WBS: ' + err.message }, { status: 500 });
+    return Response.json({ error: 'Failed to load WBS' }, { status: 500 });
   }
 }
 
@@ -116,6 +116,6 @@ export async function onRequestPost(context) {
     return Response.json({ id, success: true }, { status: 201 });
   } catch (err) {
     console.error('WBS POST error:', err);
-    return Response.json({ error: 'Failed to create WBS task: ' + err.message }, { status: 500 });
+    return Response.json({ error: 'Failed to create WBS task' }, { status: 500 });
   }
 }

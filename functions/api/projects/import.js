@@ -205,7 +205,7 @@ export async function onRequestPost(context) {
     let bom;
     let contractValue = 0;
 
-    if (financials && financials.grandTotal > 0 && financials.categories && financials.categories.length > 0) {
+    if (financials && typeof financials.grandTotal === 'number' && financials.grandTotal > 0 && financials.categories && financials.categories.length > 0) {
       // v3.0+ export — use pre-structured financial data directly
       // The grandTotal is now set by _extractAIGrandTotal (the AI's actual sell price)
       bom = financials;
@@ -239,8 +239,8 @@ export async function onRequestPost(context) {
       }
     }
 
-    // Validate contract value
-    if (contractValue <= 0) {
+    // Validate contract value is a valid number
+    if (typeof contractValue !== 'number' || isNaN(contractValue) || contractValue <= 0) {
       return Response.json({
         error: 'IMPORT_NO_VALUE',
         message: 'Could not extract a contract value from the SmartPlans export. The AI analysis may be incomplete — try re-running the estimate in SmartPlans.',
@@ -319,7 +319,7 @@ export async function onRequestPost(context) {
             `27-${String(sortOrder).padStart(3, '0')}`,
             cat.name,
             division,
-            'material',
+            cat.category || cat.name || 'material',
             materialCost,
             materialCost,
             0,
@@ -352,7 +352,7 @@ export async function onRequestPost(context) {
             `SP-${String(sortOrder).padStart(3, '0')}`,
             section.title || key.replace(/_/g, ' '),
             guessDivision(section.title || key),
-            'material',
+            section.category || section.title || key.replace(/_/g, ' ') || 'material',
             sectionValue,
             sectionValue,
             0, 0, 0,

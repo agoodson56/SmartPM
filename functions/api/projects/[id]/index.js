@@ -139,6 +139,6 @@ export async function onRequestDelete(context) {
         return Response.json({ success: true });
     } catch (err) {
         console.error('Delete project error:', err);
-        return Response.json({ error: 'Failed to delete project: ' + err.message }, { status: 500 });
+        return Response.json({ error: 'Failed to delete project' }, { status: 500 });
     }
 }

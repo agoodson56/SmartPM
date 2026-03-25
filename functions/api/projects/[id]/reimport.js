@@ -582,6 +582,6 @@ export async function onRequestPost(context) {
     });
   } catch (err) {
     console.error('Re-import error:', err);
-    return Response.json({ error: 'Re-import failed: ' + err.message }, { status: 500 });
+    return Response.json({ error: 'Re-import failed' }, { status: 500 });
   }
 }

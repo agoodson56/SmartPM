@@ -5,6 +5,19 @@
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB limit for D1 storage
 
+const ALLOWED_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'text/csv',
+    'text/plain',
+];
+
 export async function onRequestGet(context) {
     const { env, params, request, data } = context;
     const url = new URL(request.url);
@@ -58,6 +71,12 @@ export async function onRequestPost(context) {
             return Response.json({ error: 'File data is required' }, { status: 400 });
         }
 
+        // Validate MIME type before storing
+        const mimeType = body.type || 'application/octet-stream';
+        if (!ALLOWED_TYPES.includes(mimeType)) {
+            return Response.json({ error: 'Unsupported file type' }, { status: 415 });
+        }
+
         // Validate file size (base64 is ~33% larger than raw, so check decoded size)
         const estimatedSize = body.size || Math.ceil(body.base64Data.length * 0.75);
         if (estimatedSize > MAX_FILE_SIZE) {
@@ -65,7 +84,6 @@ export async function onRequestPost(context) {
         }
 
         const id = crypto.randomUUID().replace(/-/g, '');
-        const mimeType = body.type || 'application/octet-stream';
 
         // Insert document metadata
         await env.DB.prepare(`

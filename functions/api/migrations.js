@@ -92,7 +92,7 @@ export async function onRequestGet(context) {
   } catch (err) {
     console.error('Migration status error:', err);
     return Response.json(
-      { error: 'Failed to read migration status', detail: err.message },
+      { error: 'Failed to read migration status' },
       { status: 500 }
     );
   }
@@ -160,11 +160,12 @@ export async function onRequestPost(context) {
         });
       } catch (err) {
         // Stop on first failure — don't skip migrations
+        console.error(`Migration ${migration.version} (${migration.name}) failed:`, err);
         results.push({
           version: migration.version,
           name: migration.name,
           status: 'failed',
-          error: err.message,
+          error: 'Migration failed',
         });
 
         return Response.json(
@@ -188,7 +189,7 @@ export async function onRequestPost(context) {
   } catch (err) {
     console.error('Migration runner error:', err);
     return Response.json(
-      { error: 'Migration runner failed', detail: err.message },
+      { error: 'Migration runner failed' },
       { status: 500 }
     );
   }

@@ -120,7 +120,7 @@ export async function onRequestPut(context) {
     return Response.json({ success: true });
   } catch (err) {
     console.error('WBS PUT error:', err);
-    return Response.json({ error: 'Failed to update task: ' + err.message }, { status: 500 });
+    return Response.json({ error: 'Failed to update task' }, { status: 500 });
   }
 }
 
@@ -142,6 +142,6 @@ export async function onRequestDelete(context) {
     return Response.json({ success: true });
   } catch (err) {
     console.error('WBS DELETE error:', err);
-    return Response.json({ error: 'Failed to delete task: ' + err.message }, { status: 500 });
+    return Response.json({ error: 'Failed to delete task' }, { status: 500 });
   }
 }
