@@ -4,8 +4,8 @@
 
 const API = {
   baseUrl: '/api',
-  token: localStorage.getItem('pm_token') || null,
-  user: JSON.parse(localStorage.getItem('pm_user') || 'null'),
+  token: sessionStorage.getItem('pm_token') || null,
+  user: JSON.parse(sessionStorage.getItem('pm_user') || 'null'),
 
   _activeRequests: 0,
   _pendingGets: new Map(),
@@ -87,8 +87,8 @@ const API = {
     if (res.token) {
       this.token = res.token;
       this.user = res.user;
-      localStorage.setItem('pm_token', res.token);
-      localStorage.setItem('pm_user', JSON.stringify(res.user));
+      sessionStorage.setItem('pm_token', res.token);
+      sessionStorage.setItem('pm_user', JSON.stringify(res.user));
     }
     return res;
   },
@@ -100,8 +100,8 @@ const API = {
     }
     this.token = null;
     this.user = null;
-    localStorage.removeItem('pm_token');
-    localStorage.removeItem('pm_user');
+    sessionStorage.removeItem('pm_token');
+    sessionStorage.removeItem('pm_user');
     if (typeof App !== 'undefined') App.render();
   },
 
