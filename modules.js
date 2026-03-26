@@ -294,7 +294,7 @@ App.addWBSTask = async function () {
 
 // ─── SOV (Schedule of Values) — AIA G703 ──────────────────────
 App.renderSOV = async function (c) {
-    c.innerHTML = `<div class="page-header"><div><h1 class="page-title">📋 Schedule of Values</h1><p class="page-subtitle">AIA G703 line items for progress billing</p></div><div class="page-actions">${AIAssistant.renderAIButton('sov-validate', this.state.projectId)}<button class="btn btn-primary" id="btn-add-sov">+ Add Line Item</button></div></div><div id="sov-balance" class="metric-grid" style="margin-bottom:20px;"></div><div class="card"><table class="data-table" id="sov-table"><thead><tr><th>Item #</th><th>Description</th><th style="text-align:right">Scheduled Value</th><th style="text-align:right">% Complete</th><th style="text-align:right">Previously Billed</th><th style="text-align:right">This Period</th><th>Actions</th></tr></thead><tbody id="sov-body"><tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted)">Loading...</td></tr></tbody></table></div>`;
+    c.innerHTML = `<div class="page-header"><div><h1 class="page-title">📋 Schedule of Values</h1><p class="page-subtitle">AIA G703 line items for progress billing</p></div><div class="page-actions">${AIAssistant.renderAIButton('sov-validate', this.state.projectId)}<button class="btn btn-primary" id="btn-add-sov">+ Add Line Item</button></div></div><div id="sov-balance" class="metric-grid" style="margin-bottom:20px;"></div><div class="card"><table class="data-table" id="sov-table"><thead><tr><th>Item #</th><th>Description</th><th style="text-align:right">Scheduled Value</th><th style="text-align:right">Material</th><th style="text-align:right">Labor</th><th style="text-align:right">% Complete</th><th style="text-align:right">Previously Billed</th><th style="text-align:right">This Period</th><th style="text-align:right">Balance</th><th>Actions</th></tr></thead><tbody id="sov-body"><tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text-muted)">Loading...</td></tr></tbody></table></div>`;
     const pid = this.state.projectId;
     const res = await API.getSOV(pid);
     if (res.error) { this.toast(res.error, 'error'); return; }
@@ -305,26 +305,156 @@ App.renderSOV = async function (c) {
     <div class="metric-card metric-card--emerald"><div class="metric-icon">💰</div><div class="metric-value">$${formatMoney(bal.contractValue)}</div><div class="metric-label">Contract Value</div></div>
     <div class="metric-card ${bal.balanced ? 'metric-card--emerald' : 'metric-card--rose'}"><div class="metric-icon">${bal.balanced ? '✅' : '⚠️'}</div><div class="metric-value">$${formatMoney(Math.abs(bal.difference))}</div><div class="metric-label">${bal.balanced ? 'Balanced' : 'Difference'}</div></div>`;
     const tbody = document.getElementById('sov-body');
-    if (items.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted)">No SOV items yet. Add line items or import from SmartPlans.</td></tr>`; }
-    else { tbody.innerHTML = items.map(i => {
-        const prevBilled = i.total_completed_value || 0;
-        const thisPeriod = 0; // $0 on SOV page — only non-zero during active billing
-        return `<tr><td><strong>${esc(i.item_number)}</strong></td><td>${esc(i.description)}</td><td style="text-align:right">$${formatMoney(i.scheduled_value)}</td><td style="text-align:right">${(i.total_completed_pct || 0).toFixed(1)}%</td><td style="text-align:right">$${formatMoney(prevBilled)}</td><td style="text-align:right">$${formatMoney(thisPeriod)}</td><td><button class="btn-icon" onclick="App.editSOVItem('${i.id}')">✏️</button><button class="btn-icon" onclick="App.deleteSOVItem('${i.id}')">🗑️</button></td></tr>`;
-    }).join(''); }
+
+    // Helper to recalculate a single row's derived cells and update summary
+    const _sovRecalcRow = (idx) => {
+        const item = items[idx];
+        const scheduled = item.scheduled_value || 0;
+        const prevBilled = item.total_completed_value || 0;
+        const pctInput = document.querySelector(`[data-sov-line="${idx}"][data-sov-field="pct"]`);
+        const curPct = parseFloat(pctInput ? pctInput.value : (item.total_completed_pct || 0)) || 0;
+        const thisPeriod = (curPct / 100 * scheduled) - prevBilled;
+        const balance = scheduled - prevBilled - thisPeriod;
+        const tpCell = document.querySelector(`[data-sov-line="${idx}"][data-sov-field="this-period"]`);
+        const balCell = document.querySelector(`[data-sov-line="${idx}"][data-sov-field="balance"]`);
+        if (tpCell) tpCell.textContent = '$' + formatMoney(thisPeriod);
+        if (balCell) balCell.textContent = '$' + formatMoney(balance);
+    };
+
+    const _sovRecalcTotals = () => {
+        let sumScheduled = 0, sumMaterial = 0, sumLabor = 0, sumPrevBilled = 0, sumThisPeriod = 0, sumBalance = 0;
+        let weightedPctNumerator = 0;
+        items.forEach((item, idx) => {
+            const scheduled = item.scheduled_value || 0;
+            const material = item.material_cost || 0;
+            const labor = scheduled - material;
+            const prevBilled = item.total_completed_value || 0;
+            const pctInput = document.querySelector(`[data-sov-line="${idx}"][data-sov-field="pct"]`);
+            const curPct = parseFloat(pctInput ? pctInput.value : (item.total_completed_pct || 0)) || 0;
+            const thisPeriod = (curPct / 100 * scheduled) - prevBilled;
+            const balance = scheduled - prevBilled - thisPeriod;
+            sumScheduled += scheduled;
+            sumMaterial += material;
+            sumLabor += labor;
+            sumPrevBilled += prevBilled;
+            sumThisPeriod += thisPeriod;
+            sumBalance += balance;
+            weightedPctNumerator += curPct * scheduled;
+        });
+        const weightedPct = sumScheduled > 0 ? weightedPctNumerator / sumScheduled : 0;
+        const totRow = document.getElementById('sov-totals-row');
+        if (totRow) {
+            totRow.querySelector('[data-sov-total="scheduled"]').textContent = '$' + formatMoney(sumScheduled);
+            totRow.querySelector('[data-sov-total="material"]').textContent = '$' + formatMoney(sumMaterial);
+            totRow.querySelector('[data-sov-total="labor"]').textContent = '$' + formatMoney(sumLabor);
+            totRow.querySelector('[data-sov-total="pct"]').textContent = weightedPct.toFixed(1) + '%';
+            totRow.querySelector('[data-sov-total="prev-billed"]').textContent = '$' + formatMoney(sumPrevBilled);
+            totRow.querySelector('[data-sov-total="this-period"]').textContent = '$' + formatMoney(sumThisPeriod);
+            totRow.querySelector('[data-sov-total="balance"]').textContent = '$' + formatMoney(sumBalance);
+        }
+    };
+
+    if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--text-muted)">No SOV items yet. Add line items or import from SmartPlans.</td></tr>`;
+    } else {
+        tbody.innerHTML = items.map((i, idx) => {
+            const scheduled = i.scheduled_value || 0;
+            const material = i.material_cost || 0;
+            const labor = scheduled - material;
+            const curPct = i.total_completed_pct || 0;
+            const prevBilled = i.total_completed_value || 0;
+            const thisPeriod = (curPct / 100 * scheduled) - prevBilled;
+            const balance = scheduled - prevBilled - thisPeriod;
+            return `<tr>` +
+                `<td><strong>${esc(i.item_number)}</strong></td>` +
+                `<td>${esc(i.description)}</td>` +
+                `<td style="text-align:right">$${formatMoney(scheduled)}</td>` +
+                `<td style="text-align:right">$${formatMoney(material)}</td>` +
+                `<td style="text-align:right">$${formatMoney(labor)}</td>` +
+                `<td style="text-align:right"><input class="form-input" style="width:72px;text-align:right;padding:4px 6px;" type="number" step="0.1" min="0" max="100" data-sov-line="${idx}" data-sov-field="pct" data-sov-id="${i.id}" value="${curPct.toFixed(1)}"></td>` +
+                `<td style="text-align:right">$${formatMoney(prevBilled)}</td>` +
+                `<td style="text-align:right" data-sov-line="${idx}" data-sov-field="this-period">$${formatMoney(thisPeriod)}</td>` +
+                `<td style="text-align:right" data-sov-line="${idx}" data-sov-field="balance">$${formatMoney(balance)}</td>` +
+                `<td><button class="btn-icon" onclick="App.editSOVItem('${i.id}')">✏️</button><button class="btn-icon" onclick="App.deleteSOVItem('${i.id}')">🗑️</button></td></tr>`;
+        }).join('');
+
+        // Compute initial totals for summary row
+        let sumScheduled = 0, sumMaterial = 0, sumLabor = 0, sumPrevBilled = 0, sumThisPeriod = 0, sumBalance = 0, weightedPctNum = 0;
+        items.forEach(i => {
+            const scheduled = i.scheduled_value || 0;
+            const material = i.material_cost || 0;
+            const curPct = i.total_completed_pct || 0;
+            const prevBilled = i.total_completed_value || 0;
+            const thisPeriod = (curPct / 100 * scheduled) - prevBilled;
+            const balance = scheduled - prevBilled - thisPeriod;
+            sumScheduled += scheduled;
+            sumMaterial += material;
+            sumLabor += (scheduled - material);
+            sumPrevBilled += prevBilled;
+            sumThisPeriod += thisPeriod;
+            sumBalance += balance;
+            weightedPctNum += curPct * scheduled;
+        });
+        const weightedPct = sumScheduled > 0 ? weightedPctNum / sumScheduled : 0;
+        tbody.innerHTML += `<tr id="sov-totals-row" style="font-weight:700;background:var(--bg-secondary);">` +
+            `<td colspan="2">TOTALS</td>` +
+            `<td style="text-align:right" data-sov-total="scheduled">$${formatMoney(sumScheduled)}</td>` +
+            `<td style="text-align:right" data-sov-total="material">$${formatMoney(sumMaterial)}</td>` +
+            `<td style="text-align:right" data-sov-total="labor">$${formatMoney(sumLabor)}</td>` +
+            `<td style="text-align:right" data-sov-total="pct">${weightedPct.toFixed(1)}%</td>` +
+            `<td style="text-align:right" data-sov-total="prev-billed">$${formatMoney(sumPrevBilled)}</td>` +
+            `<td style="text-align:right" data-sov-total="this-period">$${formatMoney(sumThisPeriod)}</td>` +
+            `<td style="text-align:right" data-sov-total="balance">$${formatMoney(sumBalance)}</td>` +
+            `<td></td></tr>`;
+
+        // Attach live-recalc and auto-save to % inputs
+        document.querySelectorAll('[data-sov-field="pct"]').forEach(input => {
+            let saveTimer = null;
+            input.addEventListener('input', () => {
+                const idx = parseInt(input.getAttribute('data-sov-line'));
+                _sovRecalcRow(idx);
+                _sovRecalcTotals();
+                // Debounced auto-save
+                clearTimeout(saveTimer);
+                saveTimer = setTimeout(async () => {
+                    const itemId = input.getAttribute('data-sov-id');
+                    const curPct = parseFloat(input.value) || 0;
+                    const scheduled = items[idx].scheduled_value || 0;
+                    const prevBilled = items[idx].total_completed_value || 0;
+                    const completedValue = curPct / 100 * scheduled;
+                    const r = await API.updateSOVItem(pid, itemId, {
+                        total_completed_pct: curPct,
+                        total_completed_value: completedValue
+                    });
+                    if (r.error) { App.toast(r.error, 'error'); }
+                }, 600);
+            });
+        });
+    }
     document.getElementById('btn-add-sov').addEventListener('click', () => this.addSOVItem());
 };
 App.addSOVItem = function () {
     const pid = this.state.projectId;
-    this.showModal('Add SOV Line Item', `<div class="form-grid"><div class="form-group"><label class="form-label">Item Number *</label><input class="form-input" id="sov-num" placeholder="e.g. 27-001"></div><div class="form-group"><label class="form-label">Division</label><select class="form-select" id="sov-div"><option value="">Select...</option><option value="Division 27">Division 27</option><option value="Division 28">Division 28</option><option value="Special Conditions">Special Conditions</option><option value="General Conditions">General Conditions</option></select></div><div class="form-group form-full"><label class="form-label">Description *</label><input class="form-input" id="sov-desc" placeholder="Line item description"></div><div class="form-group form-full"><label class="form-label">Scheduled Value ($) *</label><input class="form-input" id="sov-val" type="number" step="0.01" value="0" placeholder="Total contract value for this line"></div></div>`, async () => {
+    this.showModal('Add SOV Line Item', `<div class="form-grid"><div class="form-group"><label class="form-label">Item Number *</label><input class="form-input" id="sov-num" placeholder="e.g. 27-001"></div><div class="form-group"><label class="form-label">Division</label><select class="form-select" id="sov-div"><option value="">Select...</option><option value="Division 27">Division 27</option><option value="Division 28">Division 28</option><option value="Special Conditions">Special Conditions</option><option value="General Conditions">General Conditions</option></select></div><div class="form-group form-full"><label class="form-label">Description *</label><input class="form-input" id="sov-desc" placeholder="Line item description"></div><div class="form-group"><label class="form-label">Material Cost ($) *</label><input class="form-input" id="sov-mat" type="number" step="0.01" value="0" placeholder="Material portion"></div><div class="form-group"><label class="form-label">Labor Cost ($) *</label><input class="form-input" id="sov-lab" type="number" step="0.01" value="0" placeholder="Labor portion"></div><div class="form-group form-full"><label class="form-label">Scheduled Value ($)</label><input class="form-input" id="sov-val" type="number" step="0.01" value="0" readonly style="background:var(--bg-secondary);cursor:not-allowed;" placeholder="Auto-calculated: Material + Labor"></div></div>`, async () => {
         const num = document.getElementById('sov-num').value.trim();
         const desc = document.getElementById('sov-desc').value.trim();
         if (!num || !desc) { this.toast('Item number and description required', 'warning'); return; }
-        const scheduledValue = parseFloat(document.getElementById('sov-val').value) || 0;
-        const res = await API.createSOVItem(pid, { item_number: num, description: desc, division: document.getElementById('sov-div').value, scheduled_value: scheduledValue });
+        const materialCost = parseFloat(document.getElementById('sov-mat').value) || 0;
+        const laborCost = parseFloat(document.getElementById('sov-lab').value) || 0;
+        const scheduledValue = materialCost + laborCost;
+        const res = await API.createSOVItem(pid, { item_number: num, description: desc, division: document.getElementById('sov-div').value, scheduled_value: scheduledValue, material_cost: materialCost, labor_cost: laborCost });
         if (res.error) { this.toast(res.error, 'error'); return; }
         this.closeModal(); this.toast('SOV item added', 'success');
         this.renderSOV(document.getElementById('project-content'));
     });
+    // Wire up auto-calc for Scheduled Value = Material + Labor
+    const _sovAddRecalc = () => {
+        const mat = parseFloat(document.getElementById('sov-mat').value) || 0;
+        const lab = parseFloat(document.getElementById('sov-lab').value) || 0;
+        document.getElementById('sov-val').value = (mat + lab).toFixed(2);
+    };
+    document.getElementById('sov-mat').addEventListener('input', _sovAddRecalc);
+    document.getElementById('sov-lab').addEventListener('input', _sovAddRecalc);
 };
 App.editSOVItem = async function (itemId) {
     const pid = this.state.projectId;
@@ -332,13 +462,25 @@ App.editSOVItem = async function (itemId) {
     if (res.error) { this.toast(res.error, 'error'); return; }
     const item = (res.items || []).find(i => i.id === itemId);
     if (!item) { this.toast('Item not found', 'error'); return; }
-    this.showModal('Edit SOV Item', `<div class="form-grid"><div class="form-group"><label class="form-label">Item Number</label><input class="form-input" id="se-num" value="${esc(item.item_number)}"></div><div class="form-group"><label class="form-label">Division</label><select class="form-select" id="se-div"><option value="">Select...</option><option value="Division 27" ${item.division === 'Division 27' ? 'selected' : ''}>Division 27</option><option value="Division 28" ${item.division === 'Division 28' ? 'selected' : ''}>Division 28</option><option value="Special Conditions" ${item.division === 'Special Conditions' ? 'selected' : ''}>Special Conditions</option><option value="General Conditions" ${item.division === 'General Conditions' ? 'selected' : ''}>General Conditions</option></select></div><div class="form-group form-full"><label class="form-label">Description</label><input class="form-input" id="se-desc" value="${esc(item.description)}"></div><div class="form-group form-full"><label class="form-label">Scheduled Value ($)</label><input class="form-input" id="se-val" type="number" step="0.01" value="${item.scheduled_value || 0}"></div></div>`, async () => {
-        const scheduledValue = parseFloat(document.getElementById('se-val').value) || 0;
-        const r = await API.updateSOVItem(pid, itemId, { item_number: document.getElementById('se-num').value.trim(), description: document.getElementById('se-desc').value.trim(), division: document.getElementById('se-div').value, scheduled_value: scheduledValue });
+    const matCost = item.material_cost || 0;
+    const labCost = item.labor_cost || (item.scheduled_value || 0) - matCost;
+    this.showModal('Edit SOV Item', `<div class="form-grid"><div class="form-group"><label class="form-label">Item Number</label><input class="form-input" id="se-num" value="${esc(item.item_number)}"></div><div class="form-group"><label class="form-label">Division</label><select class="form-select" id="se-div"><option value="">Select...</option><option value="Division 27" ${item.division === 'Division 27' ? 'selected' : ''}>Division 27</option><option value="Division 28" ${item.division === 'Division 28' ? 'selected' : ''}>Division 28</option><option value="Special Conditions" ${item.division === 'Special Conditions' ? 'selected' : ''}>Special Conditions</option><option value="General Conditions" ${item.division === 'General Conditions' ? 'selected' : ''}>General Conditions</option></select></div><div class="form-group form-full"><label class="form-label">Description</label><input class="form-input" id="se-desc" value="${esc(item.description)}"></div><div class="form-group"><label class="form-label">Material Cost ($)</label><input class="form-input" id="se-mat" type="number" step="0.01" value="${matCost}"></div><div class="form-group"><label class="form-label">Labor Cost ($)</label><input class="form-input" id="se-lab" type="number" step="0.01" value="${labCost}"></div><div class="form-group form-full"><label class="form-label">Scheduled Value ($)</label><input class="form-input" id="se-val" type="number" step="0.01" value="${item.scheduled_value || 0}" readonly style="background:var(--bg-secondary);cursor:not-allowed;"></div></div>`, async () => {
+        const materialCost = parseFloat(document.getElementById('se-mat').value) || 0;
+        const laborCost = parseFloat(document.getElementById('se-lab').value) || 0;
+        const scheduledValue = materialCost + laborCost;
+        const r = await API.updateSOVItem(pid, itemId, { item_number: document.getElementById('se-num').value.trim(), description: document.getElementById('se-desc').value.trim(), division: document.getElementById('se-div').value, scheduled_value: scheduledValue, material_cost: materialCost, labor_cost: laborCost });
         if (r.error) { this.toast(r.error, 'error'); return; }
         this.closeModal(); this.toast('SOV item updated', 'success');
         this.renderSOV(document.getElementById('project-content'));
     });
+    // Wire up auto-calc for Scheduled Value = Material + Labor
+    const _sovEditRecalc = () => {
+        const mat = parseFloat(document.getElementById('se-mat').value) || 0;
+        const lab = parseFloat(document.getElementById('se-lab').value) || 0;
+        document.getElementById('se-val').value = (mat + lab).toFixed(2);
+    };
+    document.getElementById('se-mat').addEventListener('input', _sovEditRecalc);
+    document.getElementById('se-lab').addEventListener('input', _sovEditRecalc);
 };
 App.deleteSOVItem = async function (itemId) {
     if (!confirm('Delete this SOV item?')) return;
@@ -371,45 +513,49 @@ App.viewBillingPeriod = async function (periodId) {
     if (res.error) { this.toast(res.error, 'error'); return; }
     const p = res.period; const lines = res.lineItems || [];
     const retainagePct = p.retainage_pct || 10;
+    const lessPrevPayments = p.less_previous_payments || 0;
     const statuses = ['draft', 'submitted', 'approved', 'paid'];
 
-    // Recalculate G702 summary from line items
+    // Recalculate G702 summary from line items — fires on every % input change
     const _recalcSummary = () => {
         let totalCompletedStored = 0;
         lines.forEach((l, idx) => {
             const pctInput = document.querySelector(`[data-bp-line="${idx}"][data-bp-field="pct"]`);
             const curPct = parseFloat(pctInput ? pctInput.value : l.total_completed_pct) || 0;
-            totalCompletedStored += (l.scheduled_value || 0) * curPct / 100;
+            const scheduled = l.scheduled_value || 0;
+            totalCompletedStored += scheduled * curPct / 100;
         });
         const retainage = totalCompletedStored * retainagePct / 100;
         const earnedLessRetainage = totalCompletedStored - retainage;
-        const lessPrev = p.less_previous_payments || 0;
-        const paymentDue = earnedLessRetainage - lessPrev;
+        const paymentDue = earnedLessRetainage - lessPrevPayments;
         const el = document.getElementById('bp-g702-summary');
         if (el) {
             el.querySelector('[data-g702="total-completed"]').textContent = '$' + formatMoney(totalCompletedStored);
             el.querySelector('[data-g702="retainage"]').textContent = '$' + formatMoney(retainage);
             el.querySelector('[data-g702="earned-less-ret"]').textContent = '$' + formatMoney(earnedLessRetainage);
+            el.querySelector('[data-g702="less-prev-payments"]').textContent = '$' + formatMoney(lessPrevPayments);
             el.querySelector('[data-g702="payment-due"]').textContent = '$' + formatMoney(paymentDue);
         }
-        // Update per-line "This Period $" and "Total Completed $" cells
+        // Update per-line "Previously Billed $", "This Period $", and "Total Completed $" cells
         lines.forEach((l, idx) => {
             const pctInput = document.querySelector(`[data-bp-line="${idx}"][data-bp-field="pct"]`);
             const curPct = parseFloat(pctInput ? pctInput.value : l.total_completed_pct) || 0;
             const prevPct = l.previous_completed_pct || 0;
             const scheduled = l.scheduled_value || 0;
+            const prevBilledCell = document.querySelector(`[data-bp-line="${idx}"][data-bp-field="prev-amt"]`);
             const thisPeriodCell = document.querySelector(`[data-bp-line="${idx}"][data-bp-field="this-period"]`);
             const totalCompCell = document.querySelector(`[data-bp-line="${idx}"][data-bp-field="total-comp"]`);
+            if (prevBilledCell) prevBilledCell.textContent = '$' + formatMoney(scheduled * prevPct / 100);
             if (thisPeriodCell) thisPeriodCell.textContent = '$' + formatMoney(scheduled * (curPct - prevPct) / 100);
             if (totalCompCell) totalCompCell.textContent = '$' + formatMoney(scheduled * curPct / 100);
         });
     };
 
-    // Build initial summary values
+    // Build initial summary values from current line item data
     const initTotalCompleted = lines.reduce((s, l) => s + ((l.scheduled_value || 0) * (l.total_completed_pct || 0) / 100), 0);
     const initRetainage = initTotalCompleted * retainagePct / 100;
     const initEarnedLessRet = initTotalCompleted - initRetainage;
-    const initPaymentDue = initEarnedLessRet - (p.less_previous_payments || 0);
+    const initPaymentDue = initEarnedLessRet - lessPrevPayments;
 
     this.showModal(`Billing Period #${p.period_number} — AIA G702`, `
     <div id="bp-g702-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:16px;padding:12px;background:var(--bg-secondary);border-radius:8px;font-size:0.875rem;">
@@ -419,22 +565,23 @@ App.viewBillingPeriod = async function (periodId) {
       <div>Total Completed & Stored: <strong data-g702="total-completed">$${formatMoney(initTotalCompleted)}</strong></div>
       <div>Retainage (${retainagePct}%): <strong data-g702="retainage">$${formatMoney(initRetainage)}</strong></div>
       <div>Total Earned Less Retainage: <strong data-g702="earned-less-ret">$${formatMoney(initEarnedLessRet)}</strong></div>
-      <div>Less Previous Payments: <strong>$${formatMoney(p.less_previous_payments)}</strong></div>
+      <div>Less Previous Payments: <strong data-g702="less-prev-payments">$${formatMoney(lessPrevPayments)}</strong></div>
       <div style="font-size:1rem;">Current Payment Due: <strong style="color:var(--success)" data-g702="payment-due">$${formatMoney(initPaymentDue)}</strong></div>
     </div>
     <div style="margin-bottom:12px;display:flex;gap:12px;align-items:center;">
       <label class="form-label" style="margin:0;">Status:</label>
       <select class="form-select" id="bp-status" style="width:auto;">${statuses.map(s => `<option value="${s}" ${p.status === s ? 'selected' : ''}>${formatStatus(s)}</option>`).join('')}</select>
     </div>
-    <div style="max-height:400px;overflow-y:auto;"><table class="data-table" style="font-size:0.8125rem;"><thead><tr><th>Item #</th><th>Description</th><th style="text-align:right">Scheduled Value</th><th style="text-align:right">Prev %</th><th style="text-align:right">Prev Amt</th><th style="text-align:right">Current %</th><th style="text-align:right">This Period $</th><th style="text-align:right">Total Completed $</th></tr></thead><tbody>${lines.map((l, idx) => {
+    <div style="max-height:400px;overflow-y:auto;"><table class="data-table" style="font-size:0.8125rem;"><thead><tr><th>Item #</th><th>Description</th><th style="text-align:right">Scheduled Value</th><th style="text-align:right">Prev %</th><th style="text-align:right">Previously Billed</th><th style="text-align:right">Current %</th><th style="text-align:right">This Period $</th><th style="text-align:right">Total Completed $</th></tr></thead><tbody>${lines.map((l, idx) => {
         const prevPct = l.previous_completed_pct || 0;
-        const prevAmt = l.previous_completed_value || 0;
-        const curPct = l.total_completed_pct || 0;
         const scheduled = l.scheduled_value || 0;
+        const prevBilledAmt = scheduled * prevPct / 100;
+        const curPct = l.total_completed_pct || 0;
         const thisPeriodAmt = scheduled * (curPct - prevPct) / 100;
         const totalCompAmt = scheduled * curPct / 100;
-        return `<tr><td>${esc(l.item_number)}</td><td>${esc(l.description)}</td><td style="text-align:right">$${formatMoney(scheduled)}</td><td style="text-align:right;color:var(--text-muted)">${prevPct.toFixed(1)}%</td><td style="text-align:right;color:var(--text-muted)">$${formatMoney(prevAmt)}</td><td style="text-align:right"><input class="form-input" style="width:72px;text-align:right;padding:4px 6px;" type="number" step="0.1" min="0" max="100" data-bp-line="${idx}" data-bp-field="pct" value="${curPct.toFixed(1)}"></td><td style="text-align:right" data-bp-line="${idx}" data-bp-field="this-period">$${formatMoney(thisPeriodAmt)}</td><td style="text-align:right" data-bp-line="${idx}" data-bp-field="total-comp">$${formatMoney(totalCompAmt)}</td></tr>`;
+        return `<tr><td>${esc(l.item_number)}</td><td>${esc(l.description)}</td><td style="text-align:right">$${formatMoney(scheduled)}</td><td style="text-align:right;color:var(--text-muted)">${prevPct.toFixed(1)}%</td><td style="text-align:right;color:var(--text-muted)" data-bp-line="${idx}" data-bp-field="prev-amt">$${formatMoney(prevBilledAmt)}</td><td style="text-align:right"><input class="form-input" style="width:72px;text-align:right;padding:4px 6px;" type="number" step="0.1" min="0" max="100" data-bp-line="${idx}" data-bp-field="pct" value="${curPct.toFixed(1)}"></td><td style="text-align:right" data-bp-line="${idx}" data-bp-field="this-period">$${formatMoney(thisPeriodAmt)}</td><td style="text-align:right" data-bp-line="${idx}" data-bp-field="total-comp">$${formatMoney(totalCompAmt)}</td></tr>`;
     }).join('')}</tbody></table></div>`, async () => {
+        // Save: build updated line items from current % inputs
         const updatedLines = lines.map((l, idx) => {
             const pctInput = document.querySelector(`[data-bp-line="${idx}"][data-bp-field="pct"]`);
             const curPct = parseFloat(pctInput?.value) || 0;
@@ -442,24 +589,34 @@ App.viewBillingPeriod = async function (periodId) {
             const scheduled = l.scheduled_value || 0;
             const completedValue = scheduled * curPct / 100;
             const thisPeriod = scheduled * (curPct - prevPct) / 100;
-            return { id: l.id, sov_item_id: l.sov_item_id, total_completed_pct: curPct, total_completed_value: completedValue, work_completed_this_period: thisPeriod };
+            return {
+                id: l.id,
+                sov_item_id: l.sov_item_id,
+                total_completed_pct: curPct,
+                total_completed_value: completedValue,
+                work_completed_this_period: thisPeriod,
+                total_stored: l.total_stored || 0,
+                stored_material_this_period: l.stored_material_this_period || 0,
+                retainage: completedValue * retainagePct / 100,
+            };
         });
         const totalCompletedStored = updatedLines.reduce((s, l) => s + l.total_completed_value, 0);
         const retainage = totalCompletedStored * retainagePct / 100;
         const earnedLessRetainage = totalCompletedStored - retainage;
-        const paymentDue = earnedLessRetainage - (p.less_previous_payments || 0);
+        const paymentDue = earnedLessRetainage - lessPrevPayments;
         const r = await API.updateBillingPeriod(pid, periodId, {
             period: {
                 status: document.getElementById('bp-status').value,
                 total_completed_stored: totalCompletedStored,
                 retainage: retainage,
                 total_earned_less_retainage: earnedLessRetainage,
+                less_previous_payments: lessPrevPayments,
                 current_payment_due: paymentDue,
             },
             lineItems: updatedLines,
         });
         if (r.error) { this.toast(r.error, 'error'); return; }
-        this.closeModal(); this.toast('Billing period updated', 'success');
+        this.closeModal(); this.toast('Billing period saved', 'success');
         this.renderBilling(document.getElementById('project-content'));
     });
     // Attach live-recalc listeners to % inputs
