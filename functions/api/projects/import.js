@@ -354,13 +354,23 @@ export async function onRequestPost(context) {
       return true;
     });
     if (filteredCategories.length > 0) {
+      // Scale SOV items so they sum to the contract value (sell price, not cost)
+      const rawTotal = filteredCategories.reduce((s, c) => s + (c.subtotal || (c.items || []).reduce((ss, i) => ss + (i.extCost || 0), 0)), 0);
+      const scaleFactor = (rawTotal > 0 && contractValue > 0) ? contractValue / rawTotal : 1;
+
       let sortOrder = 0;
       for (const cat of filteredCategories) {
         const itemId = crypto.randomUUID().replace(/-/g, '');
         sortOrder++;
         sovItemCount++;
         const division = guessDivision(cat.name);
-        const materialCost = cat.subtotal || (cat.items || []).reduce((s, i) => s + (i.extCost || 0), 0);
+        const rawCost = cat.subtotal || (cat.items || []).reduce((s, i) => s + (i.extCost || 0), 0);
+        // Scheduled value = sell price (proportionally scaled to contract value)
+        const scheduledValue = Math.round(rawCost * scaleFactor * 100) / 100;
+        // Material cost = raw cost (before markup)
+        const materialCost = rawCost;
+        // Labor cost = difference (markup + labor + burden + contingency portion)
+        const laborCost = Math.round((scheduledValue - materialCost) * 100) / 100;
 
         statements.push(
           env.DB.prepare(`
@@ -374,9 +384,9 @@ export async function onRequestPost(context) {
             cat.name,
             division,
             cat.category || cat.name || 'material',
+            scheduledValue,
             materialCost,
-            materialCost,
-            0,
+            laborCost,
             0,
             0,
             sortOrder,
