@@ -546,15 +546,19 @@ export async function onRequestPost(context) {
         if (loadedVals.length > 0) avgRate = loadedVals.reduce((s, v) => s + v, 0) / loadedVals.length;
       }
 
+      // Distribute raw BOM total evenly across phases so WBS total ≈ SOV total
+      const numPhases = wbs.phases.length || 1;
+      const rawBomTotal = (financials && financials.bomRawTotal) ? financials.bomRawTotal : contractValue;
+      const perPhaseMaterial = Math.round((rawBomTotal / numPhases) * 100) / 100;
+
       let wbsSortOrder = 0;
       for (const phase of wbs.phases) {
         const phaseId = crypto.randomUUID().replace(/-/g, '');
         wbsSortOrder++;
 
-        // Phase-level budgets are set to 0 — actual budgets live at the leaf task level only
-        // This prevents triple-counting (phase + location + task all having the same material cost)
-        const phaseLaborCost = 0;
-        const phaseTotal = 0;
+        const phaseLaborHrs = (phase.budgeted_labor_hrs || 0);
+        const phaseLaborCost = phaseLaborHrs * avgRate;
+        const phaseTotal = perPhaseMaterial + phaseLaborCost;
 
         statements.push(
           env.DB.prepare(`
@@ -570,10 +574,10 @@ export async function onRequestPost(context) {
             phase.description || '',
             phase.phase || '',
             wbsSortOrder,
-            0, // material budget — lives at task level only
-            0, // labor hrs — lives at task level only
-            0, // labor cost
-            0, // total
+            perPhaseMaterial,
+            phaseLaborHrs,
+            phaseLaborCost,
+            phaseTotal,
           )
         );
 
@@ -586,9 +590,10 @@ export async function onRequestPost(context) {
             wbsSortOrder++;
 
             const linkedLocId = locTask.location_name ? (locationIdMap[locTask.location_name] || null) : null;
-            // Location-level budgets are 0 — actual budgets live at leaf tasks only
-            const locLaborCost = 0;
-            const locTotal = 0;
+            const locMaterial = locTask.budgeted_material || 0;
+            const locLaborHrs = locTask.budgeted_labor_hrs || 0;
+            const locLaborCost = locLaborHrs * avgRate;
+            const locTotal = locMaterial + locLaborCost;
 
             statements.push(
               env.DB.prepare(`
@@ -604,10 +609,10 @@ export async function onRequestPost(context) {
                 locTask.description || '',
                 locTask.phase || phase.phase || '',
                 wbsSortOrder,
-                0, // material — at task level only
-                0, // labor hrs — at task level only
-                0,
-                0,
+                locMaterial,
+                locLaborHrs,
+                locLaborCost,
+                locTotal,
               )
             );
 
