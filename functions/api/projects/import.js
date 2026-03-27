@@ -551,8 +551,10 @@ export async function onRequestPost(context) {
         const phaseId = crypto.randomUUID().replace(/-/g, '');
         wbsSortOrder++;
 
-        const phaseLaborCost = (phase.budgeted_labor_hrs || 0) * avgRate;
-        const phaseTotal = (phase.budgeted_material || 0) + phaseLaborCost;
+        // Phase-level budgets are set to 0 — actual budgets live at the leaf task level only
+        // This prevents triple-counting (phase + location + task all having the same material cost)
+        const phaseLaborCost = 0;
+        const phaseTotal = 0;
 
         statements.push(
           env.DB.prepare(`
@@ -568,10 +570,10 @@ export async function onRequestPost(context) {
             phase.description || '',
             phase.phase || '',
             wbsSortOrder,
-            phase.budgeted_material || 0,
-            phase.budgeted_labor_hrs || 0,
-            phaseLaborCost,
-            phaseTotal,
+            0, // material budget — lives at task level only
+            0, // labor hrs — lives at task level only
+            0, // labor cost
+            0, // total
           )
         );
 
@@ -584,8 +586,9 @@ export async function onRequestPost(context) {
             wbsSortOrder++;
 
             const linkedLocId = locTask.location_name ? (locationIdMap[locTask.location_name] || null) : null;
-            const locLaborCost = (locTask.budgeted_labor_hrs || 0) * avgRate;
-            const locTotal = (locTask.budgeted_material || 0) + locLaborCost;
+            // Location-level budgets are 0 — actual budgets live at leaf tasks only
+            const locLaborCost = 0;
+            const locTotal = 0;
 
             statements.push(
               env.DB.prepare(`
@@ -601,10 +604,10 @@ export async function onRequestPost(context) {
                 locTask.description || '',
                 locTask.phase || phase.phase || '',
                 wbsSortOrder,
-                locTask.budgeted_material || 0,
-                locTask.budgeted_labor_hrs || 0,
-                locLaborCost,
-                locTotal,
+                0, // material — at task level only
+                0, // labor hrs — at task level only
+                0,
+                0,
               )
             );
 
