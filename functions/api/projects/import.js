@@ -220,14 +220,8 @@ export async function onRequestPost(context) {
       }
     }
 
-    // If financials.grandTotal was from BOM sum (old export), try to get the real AI total
-    if (contractValue > 0 && rawMarkdown) {
-      const aiTotal = extractGrandTotal(rawMarkdown);
-      if (aiTotal > 0 && aiTotal < contractValue * 0.95) {
-        // The AI's actual total is significantly lower — use it (BOM was double-counting)
-        contractValue = aiTotal;
-      }
-    }
+    // Trust financials.grandTotal — it's the single source of truth from SmartPlans
+    // Do NOT override it by parsing raw markdown (that produced wrong numbers)
 
     // Fallback to infrastructure totals if everything else fails
     if (contractValue === 0) {
