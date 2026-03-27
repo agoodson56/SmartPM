@@ -16,7 +16,7 @@ export async function onRequestGet(context) {
         ).bind(params.id).all();
 
         // Get project contract value for balance check
-        const project = await env.DB.prepare(
+        const projectData = await env.DB.prepare(
             `SELECT current_contract_value FROM projects WHERE id = ?`
         ).bind(params.id).first();
 
@@ -27,9 +27,9 @@ export async function onRequestGet(context) {
             items,
             balance: {
                 totalScheduled,
-                contractValue: project?.current_contract_value || 0,
-                difference: (project?.current_contract_value || 0) - totalScheduled,
-                balanced: Math.abs((project?.current_contract_value || 0) - totalScheduled) < 0.01,
+                contractValue: projectData?.current_contract_value || 0,
+                difference: (projectData?.current_contract_value || 0) - totalScheduled,
+                balanced: Math.abs((projectData?.current_contract_value || 0) - totalScheduled) < 0.01,
             },
         });
     } catch (err) {
