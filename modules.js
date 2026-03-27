@@ -1433,3 +1433,4 @@ App._generateDailyReport = async function (pid, project) {
 
   this.toast('Report generated!', 'success');
 };
+/* build 1774617976 */
