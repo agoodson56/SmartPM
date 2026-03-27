@@ -741,6 +741,22 @@ textarea:focus {
 #sov-table thead th:nth-child(10) { width: 70px; } /* Actions */
 #sov-table tbody td:nth-child(2) { white-space: normal; overflow: visible; } /* Description wraps */
 
+/* WBS tables — fit all columns within card */
+#wbs-children table.data-table,
+[id^="wbs-children-"] table.data-table { table-layout: fixed; width: 100%; }
+[id^="wbs-children-"] th, [id^="wbs-children-"] td { padding: 6px 5px !important; font-size: 11px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[id^="wbs-children-"] th:nth-child(1) { width: 28px; }  /* expand arrow */
+[id^="wbs-children-"] th:nth-child(2) { width: 45px; }  /* WBS code */
+[id^="wbs-children-"] th:nth-child(3) { width: auto; }   /* Task — gets remaining space */
+[id^="wbs-children-"] th:nth-child(4) { width: 80px; }  /* Material */
+[id^="wbs-children-"] th:nth-child(5) { width: 70px; }  /* Labor */
+[id^="wbs-children-"] th:nth-child(6) { width: 60px; }  /* Installed */
+[id^="wbs-children-"] th:nth-child(7) { width: 70px; }  /* Hrs Used */
+[id^="wbs-children-"] th:nth-child(8) { width: 65px; }  /* Progress */
+[id^="wbs-children-"] th:nth-child(9) { width: 75px; }  /* Status */
+[id^="wbs-children-"] th:nth-child(10) { width: 35px; } /* Edit btn */
+[id^="wbs-children-"] td:nth-child(3) { white-space: normal; overflow: visible; } /* Task name wraps */
+
 .data-table .row-link:hover td:first-child {
   color: var(--accent-sky);
 }
