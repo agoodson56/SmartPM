@@ -725,6 +725,22 @@ textarea:focus {
   cursor: pointer;
 }
 
+/* SOV table — tighter columns to fit all 10 within the card */
+#sov-table { table-layout: fixed; width: 100%; }
+#sov-table thead th { padding: 8px 6px; font-size: 10px; }
+#sov-table tbody td { padding: 8px 6px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#sov-table thead th:nth-child(1) { width: 60px; }  /* Item # */
+#sov-table thead th:nth-child(2) { width: auto; white-space: normal; }  /* Description — gets remaining space */
+#sov-table thead th:nth-child(3) { width: 90px; }  /* Scheduled Value */
+#sov-table thead th:nth-child(4) { width: 75px; }  /* Material */
+#sov-table thead th:nth-child(5) { width: 75px; }  /* Labor */
+#sov-table thead th:nth-child(6) { width: 70px; }  /* % Complete */
+#sov-table thead th:nth-child(7) { width: 85px; }  /* Previously Billed */
+#sov-table thead th:nth-child(8) { width: 70px; }  /* This Period */
+#sov-table thead th:nth-child(9) { width: 80px; }  /* Balance */
+#sov-table thead th:nth-child(10) { width: 70px; } /* Actions */
+#sov-table tbody td:nth-child(2) { white-space: normal; overflow: visible; } /* Description wraps */
+
 .data-table .row-link:hover td:first-child {
   color: var(--accent-sky);
 }
